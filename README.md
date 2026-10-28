@@ -1,10 +1,8 @@
-# SongForge (macOS / Apple Silicon)
+# SongForge | YuE2 Music GEN WebUI — macOS / Apple Silicon
 
 > **This is the `macos` branch.** It is `main` plus a few Apple-specific
 > differences, listed in [docs/macos.md](docs/macos.md) — read that first. For
 > Windows or Linux, use `main`.
-
-# SongForge
 
 A self-hosted music studio for the **YuE2** text-to-music model. It runs on your
 own machine and is used from any browser on the same local network — there is no
@@ -20,8 +18,8 @@ have numbers, they are the most useful thing you could contribute to this
 branch.
 
 ```
-git clone https://github.com/<you>/SongForge
-cd SongForge
+git clone -b macos https://github.com/damiaan111/SongForge-YuE2-Music-GEN-WebUI
+cd SongForge-YuE2-Music-GEN-WebUI
 ./setup.sh
 ```
 

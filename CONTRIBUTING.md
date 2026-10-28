@@ -1,7 +1,7 @@
 # Contributing
 
-SongForge is a local web interface for the [YuE2](https://huggingface.co/m-a-p/YuE2-3B)
-music model. It was built for one person's RTX 3060 and then made to work on
+SongForge | YuE2 Music GEN WebUI is a local web interface for the
+[YuE2](https://huggingface.co/m-a-p/YuE2-3B) music model. It was built for one person's RTX 3060 and then made to work on
 other people's machines, so if something still assumes a 12 GB NVIDIA card on
 Windows, that is a bug worth reporting.
 
@@ -9,7 +9,7 @@ Windows, that is a bug worth reporting.
 
 ```
 git clone <your fork>
-cd SongForge
+cd SongForge-YuE2-Music-GEN-WebUI
 ./setup.sh        # or .\setup.ps1 on Windows
 ```
 

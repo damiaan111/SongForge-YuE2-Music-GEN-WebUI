@@ -5,7 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { StoreProvider } from "@/lib/store";
 
 export const metadata: Metadata = {
-  title: "SongForge",
+  title: "SongForge | YuE2 Music GEN WebUI",
   description: "Local music studio for YuE2",
 };
 

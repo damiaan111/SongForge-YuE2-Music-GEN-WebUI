@@ -81,7 +81,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
           <div>
             <p className="text-sm font-semibold tracking-tight">SongForge</p>
-            <p className="text-[11px] text-[var(--sf-text-faint)]">
+            {/* The full name is "SongForge | YuE2 Music GEN WebUI". The brand
+                line is a 240px slot, so the qualifier sits under it rather
+                than wrapping, and the version keeps its own line because it
+                is the first thing anyone is asked for in a bug report. */}
+            <p className="text-[11px] leading-tight text-[var(--sf-text-muted)]">
+              YuE2 Music GEN WebUI
+            </p>
+            <p className="text-[11px] leading-tight text-[var(--sf-text-faint)]">
               {health?.version ?? "connecting…"}
             </p>
           </div>
