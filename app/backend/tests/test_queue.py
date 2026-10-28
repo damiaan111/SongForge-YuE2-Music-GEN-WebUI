@@ -7,7 +7,7 @@ import pytest
 
 from songforge.enums import JobStatus, ProjectStatus
 
-from .conftest import wait_for
+from .conftest import needs_ffmpeg, wait_for
 
 
 def create_project(client, **overrides) -> dict:
@@ -36,6 +36,7 @@ def wait_for_job(client, job_id: str, *, timeout: float = 60.0) -> dict:
 # ------------------------------------------------------------- versioning
 
 
+@needs_ffmpeg
 def test_versions_increment_and_audio_is_immutable(client, fast_mock) -> None:
     project = create_project(client)
     pid = project["id"]

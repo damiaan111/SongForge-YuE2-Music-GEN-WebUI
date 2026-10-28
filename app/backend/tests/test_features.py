@@ -14,7 +14,7 @@ from songforge.enums import CotMode
 from songforge.runners.base import GenerationRequest
 from songforge.runners.yue2 import Yue2CliRunner, Yue2Config, compose_style
 
-from .conftest import wait_for
+from .conftest import needs_ffmpeg, wait_for
 
 
 def make_project(client, **overrides) -> str:
@@ -241,6 +241,7 @@ def test_missing_result_json_degrades_quietly(tmp_path: Path) -> None:
 # ------------------------------------------------------------ version delete
 
 
+@needs_ffmpeg
 def test_delete_one_version(client, fast_mock) -> None:
     project_id = make_project(client)
     for _ in range(2):
