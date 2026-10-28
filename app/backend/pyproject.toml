@@ -1,0 +1,15 @@
+[project]
+name = "songforge"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115", "uvicorn[standard]>=0.32", "pydantic>=2.9",
+  "pydantic-settings>=2.6", "sqlmodel>=0.0.22",]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.24", "httpx>=0.27", "anyio>=4"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]

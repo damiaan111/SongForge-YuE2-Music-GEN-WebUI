@@ -1,0 +1,44 @@
+# Nothing here is part of the source. Everything the setup script installs or
+# downloads, everything the app writes, and anything that names this machine
+# stays out of the repository.
+
+# --- Installed toolchains and downloaded weights ----------------------------
+# runtime/ holds both virtual environments, the YuE2 weights, the Ollama
+# binary, the database, the logs and every song that has been rendered. The
+# setup script recreates all of it; none of it belongs in git.
+runtime/
+
+app/frontend/node_modules/
+app/frontend/.next/
+app/frontend/out/
+app/frontend/tsconfig.tsbuildinfo
+app/frontend/next-env.d.ts
+
+# --- Python build and cache artefacts ---------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# --- Local configuration -----------------------------------------------------
+# .env.example is committed; the real .env names this machine's paths.
+.env
+.env.local
+app/frontend/.env.local
+
+# --- Working notes, not part of the project ---------------------------------
+Audit.txt
+Last prompt.txt
+*.local.md
+
+# --- Editors and operating systems ------------------------------------------
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp

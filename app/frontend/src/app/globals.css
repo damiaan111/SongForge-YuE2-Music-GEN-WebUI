@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+/*
+ * SongForge visual language.
+ *
+ * Dark-first. The palette is a deep slate ground with a warm amber accent, so
+ * it reads as a studio tool rather than a generic dashboard. Colours live as
+ * CSS variables on :root and reach Tailwind through the @theme bridge.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --sf-bg: oklch(0.17 0.012 264);
+  --sf-bg-raised: oklch(0.21 0.014 264);
+  --sf-bg-overlay: oklch(0.25 0.016 264);
+  --sf-border: oklch(0.31 0.016 264);
+  --sf-border-strong: oklch(0.41 0.02 264);
+
+  --sf-text: oklch(0.95 0.006 264);
+  --sf-text-muted: oklch(0.72 0.012 264);
+  --sf-text-faint: oklch(0.58 0.014 264);
+
+  --sf-accent: oklch(0.78 0.15 68);
+  --sf-accent-strong: oklch(0.84 0.16 72);
+  --sf-accent-ink: oklch(0.2 0.04 60);
+
+  --sf-success: oklch(0.76 0.15 155);
+  --sf-warning: oklch(0.82 0.14 85);
+  --sf-danger: oklch(0.68 0.19 25);
+  --sf-info: oklch(0.75 0.12 235);
+
+  --sf-radius: 0.75rem;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --sf-bg: oklch(0.98 0.004 264);
+  --sf-bg-raised: oklch(1 0 0);
+  --sf-bg-overlay: oklch(0.96 0.006 264);
+  --sf-border: oklch(0.9 0.008 264);
+  --sf-border-strong: oklch(0.82 0.012 264);
+
+  --sf-text: oklch(0.24 0.014 264);
+  --sf-text-muted: oklch(0.45 0.014 264);
+  --sf-text-faint: oklch(0.58 0.012 264);
+
+  --sf-accent: oklch(0.62 0.15 55);
+  --sf-accent-strong: oklch(0.55 0.16 52);
+  --sf-accent-ink: oklch(0.99 0.01 60);
+
+  --sf-success: oklch(0.55 0.14 155);
+  --sf-warning: oklch(0.6 0.13 75);
+  --sf-danger: oklch(0.55 0.19 25);
+  --sf-info: oklch(0.55 0.13 240);
+}
+
+@theme inline {
+  --color-ground: var(--sf-bg);
+  --color-raised: var(--sf-bg-raised);
+  --color-overlay: var(--sf-bg-overlay);
+  --color-edge: var(--sf-border);
+  --color-edge-strong: var(--sf-border-strong);
+  --color-ink: var(--sf-text);
+  --color-ink-muted: var(--sf-text-muted);
+  --color-ink-faint: var(--sf-text-faint);
+  --color-accent: var(--sf-accent);
+  --color-accent-strong: var(--sf-accent-strong);
+  --color-accent-ink: var(--sf-accent-ink);
+  --color-success: var(--sf-success);
+  --color-warning: var(--sf-warning);
+  --color-danger: var(--sf-danger);
+  --color-info: var(--sf-info);
+  --radius-sf: var(--sf-radius);
+}
+
+body {
+  background-color: var(--sf-bg);
+  color: var(--sf-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-wrap: break-word;
+}
+
+/* Visible focus for keyboard users, suppressed for pointer interaction. */
+:focus-visible {
+  outline: 2px solid var(--sf-accent);
+  outline-offset: 2px;
+  border-radius: 0.35rem;
+}
+
+/* Scrollbars that match the surface rather than the OS default. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sf-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--sf-border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+@keyframes sf-pulse-ring {
+  0% { opacity: 0.55; transform: scale(0.96); }
+  70% { opacity: 0; transform: scale(1.35); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+.sf-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--sf-accent);
+  animation: sf-pulse-ring 1.8s ease-out infinite;
+}
+
+@keyframes sf-shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+.sf-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--sf-bg-raised) 0%,
+    var(--sf-bg-overlay) 50%,
+    var(--sf-bg-raised) 100%
+  );
+  background-size: 200% 100%;
+  animation: sf-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
