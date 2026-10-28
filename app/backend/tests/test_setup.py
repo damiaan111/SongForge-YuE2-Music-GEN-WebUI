@@ -25,6 +25,7 @@ from songforge.setup.hardware import (
     Machine,
     recommended_lyrics_model,
     settings_profile,
+    system_memory_gib,
     torch_target,
     warnings_for,
 )
@@ -111,10 +112,19 @@ def test_apple_takes_a_share_of_shared_memory_not_all_of_it() -> None:
     assert profile["quantization"] == "none"
 
 
-def test_the_cpu_profile_asks_for_no_video_memory() -> None:
+def test_the_cpu_profile_still_asks_for_a_positive_budget() -> None:
+    """yue2 raises ValueError on a budget of zero, so the CPU path cannot use one."""
     profile = settings_profile(CPU)
-    assert profile["memory_budget_gib"] == 0.0
+    assert profile["memory_budget_gib"] >= 8.0
+    assert profile["offload_ar"] is False
+    # The attention shim stands in for a CUDA kernel and has nothing to do here.
     assert profile["memory_efficient_attention"] is False
+
+
+def test_system_memory_is_readable_on_this_machine() -> None:
+    """The reader is ctypes on Windows and sysctl/sysconf elsewhere; all three
+    are easy to get wrong in a way that only shows on the other platform."""
+    assert (system_memory_gib() or 0) > 0.5
 
 
 @pytest.mark.parametrize(("memory", "expected"), [

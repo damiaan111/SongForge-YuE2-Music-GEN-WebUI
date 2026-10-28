@@ -165,14 +165,48 @@ def _detect_nvidia() -> Gpu | None:
                compute=compute, driver=driver)
 
 
+def system_memory_gib() -> float | None:
+    """How much RAM this machine has, without leaving the standard library.
+
+    Needed in two places: Apple Silicon has no separate VRAM, and a CPU-only
+    run still has to be given a positive memory budget. ctypes is used on
+    Windows because there is no portable stdlib call for this.
+    """
+    try:
+        if platform.system() == "Windows":
+            import ctypes
+
+            class _Status(ctypes.Structure):
+                _fields_ = [("dwLength", ctypes.c_ulong),
+                            ("dwMemoryLoad", ctypes.c_ulong),
+                            ("ullTotalPhys", ctypes.c_ulonglong),
+                            ("ullAvailPhys", ctypes.c_ulonglong),
+                            ("ullTotalPageFile", ctypes.c_ulonglong),
+                            ("ullAvailPageFile", ctypes.c_ulonglong),
+                            ("ullTotalVirtual", ctypes.c_ulonglong),
+                            ("ullAvailVirtual", ctypes.c_ulonglong),
+                            ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+
+            status = _Status()
+            status.dwLength = ctypes.sizeof(_Status)
+            if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+                return None
+            return status.ullTotalPhys / (1024 ** 3)
+        out = _run(["sysctl", "-n", "hw.memsize"]).strip()
+        if out.isdigit():
+            return int(out) / (1024 ** 3)
+        pages = os.sysconf("SC_PHYS_PAGES")
+        return pages * os.sysconf("SC_PAGE_SIZE") / (1024 ** 3)
+    except Exception:
+        # Every failure here means the same thing: fall back to a guess.
+        return None
+
+
 def _detect_apple(machine: Machine) -> Gpu | None:
     if not (machine.is_macos and machine.machine in ("arm64", "aarch64")):
         return None
     # Apple Silicon shares one pool between CPU and GPU, so "VRAM" is RAM.
-    memory_gib = None
-    out = _run(["sysctl", "-n", "hw.memsize"]).strip()
-    if out.isdigit():
-        memory_gib = int(out) / (1024 ** 3)
+    memory_gib = system_memory_gib()
     name = _run(["sysctl", "-n", "machdep.cpu.brand_string"]).strip() or "Apple Silicon"
     return Gpu(vendor="apple", name=name, memory_gib=memory_gib,
                notes=("Memory is shared with the system, so the budget is a share of RAM.",))
@@ -294,8 +328,15 @@ def settings_profile(gpu: Gpu) -> dict:
         profile["memory_budget_gib"] = round(max(6.0, usable), 1)
         profile["offload_ar"] = True
     elif gpu.vendor == "cpu":
-        profile["memory_budget_gib"] = 0.0
+        # yue2 refuses a non-positive budget outright (pipeline.py:
+        # "memory_budget_gib must be positive") and then subtracts a 2 GiB
+        # reserve from it, so "no video memory" cannot be expressed as 0.0 -
+        # it has to be a real share of system RAM.
+        ram = system_memory_gib() or 16.0
+        profile["memory_budget_gib"] = round(max(8.0, ram * 0.5), 1)
         profile["offload_ar"] = False
+        # The attention shim replaces a CUDA kernel; on the CPU path there is
+        # nothing for it to replace.
         profile["memory_efficient_attention"] = False
     else:
         card = memory or 12.0
