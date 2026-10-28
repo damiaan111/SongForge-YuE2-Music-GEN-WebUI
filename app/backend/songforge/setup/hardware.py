@@ -323,7 +323,15 @@ def settings_profile(gpu: Gpu) -> dict:
     }
 
     if gpu.vendor == "apple":
-        # Unified memory: taking much more than half starves the rest of macOS.
+        # Unified memory: taking much more than half starves the rest of macOS,
+        # so the budget is a share rather than the whole pool.
+        #
+        # The floor wins below about 10 GB of RAM, where the share would be
+        # under 6 GiB and yue2's own 2 GiB reserve would leave too little to
+        # load a 3B model at all. On an 8 GB machine it therefore asks for 75%
+        # rather than 60% - deliberately optimistic, because the alternative
+        # number cannot work either, and warnings_for() already says the card
+        # is below what this needs.
         usable = (memory or 16.0) * 0.6
         profile["memory_budget_gib"] = round(max(6.0, usable), 1)
         profile["offload_ar"] = True
