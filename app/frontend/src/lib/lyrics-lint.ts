@@ -101,7 +101,16 @@ export function lintLyrics(lyrics: string): LyricFinding[] {
     });
   }
 
-  const direction = /\((?:[^)]*\b(?:solo|instrumental|fade|spoken|whisper|guitar|piano|drums|beat|riff)\b[^)]*)\)/i;
+  // Typed lyrics reach YuE2 verbatim - unlike the writer's output, nothing
+  // strips a production note from them - so this warning is the only thing
+  // standing between "(guitar solo)" and hearing it sung.
+  //
+  // Dutch is included because the words are glued into one token there
+  // ("gitaarsolo"), so an English-only list silently misses them. "beat" is
+  // deliberately absent: "(beat it)" is a lyric, and a false warning on a real
+  // line is what teaches people to ignore the linter.
+  const direction =
+    /\((?:[^)]*\b(?:solo|instrumental|interlude|fade|spoken|whisper(?:ed)?|guitar|piano|drums|riff|ad[- ]?lib|gitaarsolo|pianosolo|drumsolo|gitaar|tussenspel|gesproken|gefluisterd|refrein|instrumentaal)\b[^)]*)\)/i;
   if (direction.test(text)) {
     findings.push({
       id: "stage-direction",
