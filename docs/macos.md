@@ -93,11 +93,15 @@ git switch macos
 git merge main
 ```
 
-The differences are deliberately small and confined to:
+The differences are deliberately small and confined to these files. Check the
+list against reality with `git diff --name-only main macos`; if it has drifted,
+the list is the thing to fix.
 
 - `setup/hardware.py` — the Metal warnings
 - `setup/components.py` — FFmpeg through Homebrew
 - `scripts/start-songforge.sh` — finding Ollama in an app bundle
+- `tests/test_setup.py` — the test for those warnings
+- `.github/workflows/ci.yml` — the macOS runners and the detection job
 - `README.md` and this file
 
 A conflict anywhere else means something Apple-specific has leaked into shared
