@@ -385,6 +385,29 @@ def warnings_for(gpu: Gpu, machine: Machine | None = None) -> list[str]:
         )
         return out
 
+    if gpu.vendor == "apple":
+        # Read off the installed yue2 package rather than assumed, because
+        # otherwise an Apple user reads a slow render as their own mistake.
+        out.append(
+            "On Metal the VAE decoder runs on the CPU: yue2 sends it to CUDA or to "
+            "the CPU and has no Metal branch, so the final decode is slow even "
+            "though generation itself uses the GPU."
+        )
+        out.append(
+            "fp8 is CUDA-only in yue2, and the model always loads in bfloat16, "
+            "which needs macOS 14 or newer. On macOS 13 the load fails outright."
+        )
+        # The VRAM thresholds below are a dedicated card's numbers. Shared
+        # memory is not comparable to them - it is worse at the same figure,
+        # because macOS and the browser are drawing from the same pool - so
+        # the only useful threshold here is the one where nothing fits.
+        if (gpu.memory_gib or 0) and gpu.memory_gib < 16.0:
+            out.append(
+                f"{gpu.memory_gib:.0f} GB of memory is shared with the whole system. "
+                "Expect to keep songs short, and close other applications first."
+            )
+        return out
+
     memory = gpu.memory_gib
     if memory is None:
         out.append("The amount of video memory could not be read; settings were guessed.")

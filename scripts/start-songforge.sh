@@ -98,8 +98,21 @@ ollama_log="$log_dir/ollama-$stamp.log"
 # explains itself when the model is absent.
 ollama_pid=""
 ollama_note="not installed (the lyrics writer is optional)"
+# The .dmg installs Ollama as an application bundle and only adds the CLI to
+# PATH if you let it, so the bundle is checked explicitly. A Homebrew install
+# is already on PATH and is found by the command -v below.
 ollama_exe="$runtime/ollama/ollama"
-command -v ollama >/dev/null 2>&1 && [ ! -x "$ollama_exe" ] && ollama_exe="$(command -v ollama)"
+if [ ! -x "$ollama_exe" ]; then
+    for candidate in "$(command -v ollama 2>/dev/null || true)" \
+                     /Applications/Ollama.app/Contents/Resources/ollama \
+                     "$HOME/Applications/Ollama.app/Contents/Resources/ollama"
+    do
+        if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+            ollama_exe="$candidate"
+            break
+        fi
+    done
+fi
 
 if curl -fsS --max-time 3 "$ollama_url/api/version" >/dev/null 2>&1; then
     ollama_note="already running"

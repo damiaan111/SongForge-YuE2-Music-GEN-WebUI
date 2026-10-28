@@ -1,3 +1,9 @@
+# SongForge (macOS / Apple Silicon)
+
+> **This is the `macos` branch.** It is `main` plus a few Apple-specific
+> differences, listed in [docs/macos.md](docs/macos.md) — read that first. For
+> Windows or Linux, use `main`.
+
 # SongForge
 
 A self-hosted music studio for the **YuE2** text-to-music model. It runs on your
@@ -5,13 +11,18 @@ own machine and is used from any browser on the same local network — there is 
 cloud service, no account, and nothing leaves the computer.
 
 Generation is real: the model writes a symbolic score, renders it to audio, and
-saves a 24-bit / 48 kHz FLAC master. A reference run on a 12 GB RTX 3060
-produced **72 seconds of music in 220 seconds**, peaking at **9.3 GiB of VRAM**.
+saves a 24-bit / 48 kHz FLAC master.
+
+Every timing in this file was measured on the reference machine for `main`, a
+12 GB RTX 3060. **No Apple Silicon measurements exist yet.** Expect slower,
+partly because the VAE decode has no Metal path and runs on the CPU. If you
+have numbers, they are the most useful thing you could contribute to this
+branch.
 
 ```
 git clone https://github.com/<you>/SongForge
 cd SongForge
-./setup.sh          # Windows: .\setup.ps1
+./setup.sh
 ```
 
 Setup detects your GPU, tells you what is needed and how large it is, and
@@ -53,7 +64,8 @@ installs only what you tick. Nothing is downloaded before you agree to it.
 - **Several takes per Generate** — two by default, up to 8, each with its own seed,
   compared side by side. Best-of-two is YuE2's own published baseline, so a
   single take is the model at its worst rather than its average. They run one
-  after another; budget about 3–4 minutes each on an RTX 3060.
+  after another; on the RTX 3060 that is 3–4 minutes each, and the Create page
+  quotes an estimate scaled to your own hardware.
 - **Sampling controls** — score and audio sampling (temperature, top-p, top-k,
   repetition penalty, token limits) and synthesis steps, with YuE2's defaults
   shown in every blank field.
@@ -87,34 +99,36 @@ a model flag — the UI says so where you turn it on.
 
 | Requirement | Notes |
 | --- | --- |
-| Windows 10 22H2+, or Linux | macOS on Apple Silicon is on the `macos` branch. |
-| Python 3.12 | Setup finds it; two virtual environments are created from it. |
-| Node.js 20 LTS or newer | For the web frontend. |
+| macOS 14 Sonoma or newer, on Apple Silicon | 14 is a floor, not a preference: the model loads in bfloat16 and Metal bfloat16 arrived in 14. Intel Macs have no Metal path and fall back to the CPU. |
+| Python 3.12 | `brew install python@3.12`. Setup finds it; two virtual environments are created from it. |
+| Node.js 20 LTS or newer | `brew install node`. For the web frontend. |
 | ~40 GB free disk | Weights are ~15 GB; songs accumulate quickly. |
-| FFmpeg | Optional. Only for MP3/WAV exports; the FLAC master never needs it. |
+| FFmpeg | Optional. Setup installs it with Homebrew if you tick it. Only for MP3/WAV exports; the FLAC master never needs it. |
 
-**Graphics**, in order of how well it works. Setup detects which you have and
-installs the matching PyTorch; it never guesses.
+**Memory.** Apple Silicon shares one pool between CPU and GPU, so setup takes a
+share of RAM rather than a card's VRAM. Upstream YuE2 asks for 24 GB of *video*
+memory; 24 GB of shared memory is less than that, not equal to it.
 
-| Hardware | Status |
+| Machine | Status |
 | --- | --- |
-| NVIDIA, 12 GB or more | What this is developed and tested on. 24 GB is what YuE2 upstream asks for; 12 GB works here with AR offload and memory-efficient attention, which setup switches on for you. |
-| NVIDIA, 8–10 GB | Expect out-of-memory errors on long songs. Shorten the lyrics. |
-| NVIDIA, compute 8.9+ (Ada, Hopper, Blackwell) | Also gets fp8, which the older cards cannot run at all. |
-| Apple Silicon | YuE2 selects Metal by itself. Launch scripts are on the `macos` branch. |
-| AMD on Linux (ROCm) | PyTorch exists; untested here. Reports welcome. |
-| AMD on Windows | No usable PyTorch. Use the CPU option. |
-| No GPU | Offered as an explicit opt-in. A song takes hours, not minutes. |
+| 32 GB or more | Comfortable. |
+| 16–24 GB | Works. Keep songs short and close other applications. |
+| 8 GB | Setup warns. Long songs will not fit. |
+| Intel Mac | No Metal path. The CPU opt-in works; a song takes hours. |
 
-A **32 GB pagefile** is needed on Windows — the model load fails without it. See
-Troubleshooting.
+Two upstream limits apply here and not on CUDA: the **VAE decode runs on the
+CPU**, and **fp8 is unavailable**. Both are explained in
+[docs/macos.md](docs/macos.md).
+
+No pagefile configuration is needed; macOS grows its swap by itself. Keep a few
+tens of gigabytes free on the boot volume and it will.
 
 ---
 
 ## Install
 
 ```
-./setup.sh          # Windows: .\setup.ps1
+./setup.sh
 ```
 
 That is the whole thing. The script finds a Python 3.12+, then shows a menu:
@@ -122,12 +136,12 @@ That is the whole thing. The script finds a Python 3.12+, then shows a menu:
 ```
 SongForge setup
 ------------------------------------------------------------------------
-Detected: NVIDIA GeForce RTX 4070, 12 GB, compute 8.9, driver 566.03 - Windows
-PyTorch:  CUDA 12.8
+Detected: Apple M3 Pro, 18 GB shared - Darwin
+PyTorch:  Apple Metal (MPS)
 
   [x]  1  Python backend environment                   120 MB  required
   [x]  2  Node.js frontend packages                    430 MB  required
-  [x]  3  PyTorch 2.10.0 for CUDA 12.8                 3.0 GB  required
+  [x]  3  PyTorch 2.10.0 for Apple Metal (MPS)         3.0 GB  required
   [x]  4  YuE2 inference package                         2 MB  required
   [x]  5  YuE2-3B weights (m-a-p/YuE2-3B)             13.0 GB  required  CC BY-NC 4.0
   [x]  6  YuE2 VAE weights (m-a-p/YuE2-Vae)            1.4 GB  required  CC BY-NC 4.0
@@ -166,23 +180,21 @@ Installing by hand instead: [docs/manual-install.md](docs/manual-install.md).
 
 **Verify before the first render**
 
-```powershell
-.\scripts\Test-YuE2Runner.ps1
+```bash
+runtime/venv-yue2/bin/python -m yue2.cli doctor --verify-hashes
 ```
 
-Runs `yue2 doctor --verify-hashes`: dependencies, the device, and every weight
-file's checksum. It loads nothing onto the GPU. Add `-Generate` to render one
+Reports dependencies, the device it will use — look for `"mps_available": true`
+— and every weight file's checksum. It loads nothing onto the GPU. There is no
+shell equivalent of `Test-YuE2Runner.ps1`; this is the command it wraps. To render one
 short song end to end, which does use it.
 
 ---
 
 ## First startup
 
-```powershell
-.\scripts\Start-SongForge.ps1      # Windows
-```
 ```bash
-./scripts/start-songforge.sh     # Linux, and macOS on the macos branch
+./scripts/start-songforge.sh
 ```
 
 The script refuses to start a second copy, waits for `/api/health`, and prints
@@ -197,20 +209,16 @@ Open the first one. The **first-run wizard** appears and walks through storage,
 runner, model and GPU, the command template, a safe test, and network access.
 Nothing touches the GPU until you press **Run test**.
 
-Stop it with `.\scripts\Stop-SongForge.ps1`. A generation in progress is
+Stop it with `./scripts/stop-songforge.sh`. A generation in progress is
 cancelled cleanly and its logs are kept.
 
 ### Optional convenience
 
-```powershell
-.\scripts\Create-DesktopShortcut.ps1
-.\scripts\Install-StartupTask.ps1
-.\scripts\Install-StartupTask.ps1 -Status
-.\scripts\Install-StartupTask.ps1 -Remove
-```
-
-The first creates Start / Stop / Open shortcuts on the desktop; the second
-starts SongForge automatically when you log on.
+The desktop-shortcut and startup-task scripts on `main` are PowerShell and
+have no shell equivalents. To start SongForge at login, add
+`start-songforge.sh` as a login item in **System Settings → General → Login
+Items**, or write a `launchd` plist if you also want it restarted when it
+exits.
 
 ---
 
@@ -269,16 +277,18 @@ The two cannot run at the same time on a 12 GB card: gemma4:12b takes about
 
 Measured on the RTX 3060: a three-minute song's lyrics take about 13 seconds to
 write once the model is loaded, and the requested length lands within about 5%.
+The lyrics writer is a separate, much smaller model and runs on Metal through
+Ollama, which supports it well; this is the part of the stack least affected by
+the platform.
 
 ## Connecting from another device on your network
 
 1. Both machines must be on the same network. Substitute your own subnet
    below; `192.168.1.0/24` is only an example.
-2. Allow the port from that subnet only. In an **administrator** PowerShell:
-
-   ```powershell
-   New-NetFirewallRule -DisplayName "SongForge" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3333 -RemoteAddress 192.168.1.0/24
-   ```
+2. macOS has no port-level firewall rule to add. Its application firewall
+   works per-application, so the first time the frontend listens you are
+   asked whether to allow incoming connections to `node` — answer yes. With
+   the firewall switched off, nothing is asked and the port is already open.
 
 3. Open `http://<host-pc-ip>:3333` in a browser on the other device. The address is
    printed by the start script, and shown in **Settings → Access**.
@@ -296,12 +306,12 @@ Everything below lives in **Settings**, and each field explains itself there.
 
 | Setting | Sensible value | Why |
 | --- | --- | --- |
-| Model | `runtime\models\YuE2-3B` | Local path, or a Hugging Face id. |
+| Model | `runtime/models/YuE2-3B` | Local path, or a Hugging Face id. |
 | Audio decoder | `standard` | `legacy` scores higher on musicality benchmarks; `standard` sounds cleaner. |
-| GPU index | `0` | First CUDA device. |
-| VRAM budget | `12` GiB | Your card's size. YuE2 caps itself at budget − 2 GiB, so on a 12 GB card this allows 10 GiB. A lower number only makes out-of-memory errors likelier. |
-| Attention backend | `torch-eager` | **Required on Windows.** Plain `torch` needs FlashAttention, which has no Windows build. |
-| Quantization | `none` | `fp8` needs compute capability 8.9+; an RTX 3060 is 8.6. |
+| GPU index | `0` | Ignored on Metal; there is one device. |
+| Memory budget | 60% of RAM | Set by setup. This is shared memory, not a card's VRAM: YuE2 caps itself at budget − 2 GiB, and whatever it takes is taken from macOS. Lower it if the system starts swapping; raising it past about 70% makes things worse, not faster. |
+| Attention backend | `torch-eager` | **Required.** Plain `torch` needs FlashAttention, which is CUDA-only. |
+| Quantization | `none` | `fp8` is CUDA-only in yue2 and cannot be used here. |
 | Offline mode | on, after the first download | Prevents any Hugging Face lookup. |
 
 The **command template** builds the `yue2` command line from documented
@@ -334,50 +344,59 @@ in the Library and choose **Export ZIP**; each song gets its own folder.
 
 ## Updating
 
-```powershell
-.\scripts\Stop-SongForge.ps1
-runtime\venv\Scripts\python.exe -m pip install -e "app\backend[test]"
-cd app\frontend; npm ci; npm run build; cd ..\..
-.\scripts\Start-SongForge.ps1
+```bash
+./scripts/stop-songforge.sh
+runtime/venv/bin/python -m pip install -e "app/backend[test]"
+(cd app/frontend && npm ci && npm run build)
+./scripts/start-songforge.sh
 ```
 
 The database migrates itself on startup: columns added by a newer version are
 added to your existing database. The migration only ever adds; it never drops or
 rewrites data. To update the model package, install
-the new wheel into `runtime\venv-yue2` and re-run `Test-YuE2Runner.ps1` — the
-weight checksums are re-verified, and Settings will report any mismatch.
+the new wheel into `runtime/venv-yue2` and re-run `yue2.cli doctor
+--verify-hashes` — the weight checksums are re-verified, and Settings will report any mismatch.
 
 ---
 
 ## Troubleshooting
 
-**The model fails to load, or Windows reports it is out of memory**
+**The model fails to load, or the render is killed part-way**
 
-Set a large pagefile on the drive holding the runtime folder. Loading a 3B model
-briefly needs far more host RAM than the resident footprint suggests, and
-Windows will not grow the pagefile fast enough on its own.
+Loading a 3B model briefly needs far more memory than its resident footprint
+suggests, and on Apple Silicon that memory is the same pool the system is
+using. Quit other applications — a browser with many tabs is usually the
+largest — and keep tens of gigabytes free on the boot volume so macOS can
+grow its swap.
 
-System → About → Advanced system settings → Performance → Advanced → Virtual
-memory → uncheck automatic → select the drive → Custom size → 32768 / 32768 MB
-→ Set → reboot.
+If it still fails, lower **Memory budget** in Settings. Setup sets it to 60%
+of RAM, which is a starting point rather than a measurement.
+
+**`load failed` or a dtype error immediately on model load**
+
+The model loads in bfloat16, and Metal bfloat16 needs macOS 14. On macOS 13
+there is no fallback. Check with `sw_vers`.
 
 **`FlashAttention is not available`, or a crash immediately after model load**
 
-The attention backend is set to `torch`. Change it to `torch-eager` in Settings.
-There is no Windows build of FlashAttention; `torch-eager` is the working
-configuration, not a workaround with a cost.
+The attention backend is set to `torch`. Change it to `torch-eager` in
+Settings. FlashAttention is CUDA-only and will never be available here;
+`torch-eager` is the working configuration, not a workaround with a cost.
 
 **The lyrics writer says the model is not running**
 
-Ollama starts with `Start-SongForge.ps1` only if `runtime\ollama\ollama.exe`
-exists; check the newest `runtime\logs\ollama-*.log`. If another Ollama is
+Ollama starts with `start-songforge.sh` only if it is found on `PATH`, in
+`runtime/ollama/`, or as `/Applications/Ollama.app`; check the newest
+`runtime/logs/ollama-*.log`. If another Ollama is
 already running on port 11434, SongForge uses it instead, and that copy needs
 gemma4:12b installed.
 
 **How long can a song be, and how long does it take?**
 
 Measured on the reference RTX 3060 12 GB with the budget at 12 GiB and
-memory-efficient attention on (both defaults):
+memory-efficient attention on. **These are CUDA numbers, not Apple ones.**
+The shape holds — memory flat, time growing with length — but the constants do
+not transfer:
 
 | Song | Audio | Generation time | GPU peak (whole card) |
 | --- | --- | --- | --- |
@@ -395,29 +414,28 @@ raise **Audio sampling → Max tokens**, or the song is cut short and marked so.
 
 **Songs past about two minutes fail with "OutOfMemoryError"**
 
-Check that **Memory-efficient attention** is on in Settings. Without it, YuE2's
-attention on Windows needs memory that grows with the square of the song's
-length: PyTorch has no FlashAttention build for Windows, and its
-memory-efficient kernel refuses YuE2's grouped attention heads, so every call
-falls back to one that builds the full attention matrix - 5.2 GiB for a single
-call at 6,000 tokens. SongForge's launcher expands the heads first so the
-efficient kernel is used (0.02 GiB for the same call); output differs only by
-rounding. Nothing in the installed yue2 package is modified.
+On Metal this is memory pressure rather than a kernel problem. YuE2 expands
+its grouped attention heads for MPS itself (`nar.py`, `modeling_yue2.py`), so
+the quadratic fallback that affects CUDA on Windows does not arise here, and
+SongForge's own attention shim is a no-op on this platform — it is guarded on
+`is_cuda`. Leaving **Memory-efficient attention** on costs nothing.
+
+Lower the **Memory budget**, shorten the lyrics, and quit other applications.
+A song that fits on a 32 GB Mac may not fit on a 16 GB one.
 
 **A song fails with "OutOfMemoryError"**
 
-YuE2 limits itself to the memory budget minus 2 GiB. Set the budget to your
-card's size in Settings (12 on a 12 GB card, which allows 10 GiB); a lower
-budget only lowers that limit. Longer pieces need more memory. An instrumental
-with no lyrics tends to plan a much longer score (one real run planned 2,475 score
-tokens against 525 for a two-verse song), so lowering **Score sampling → Max
-tokens** keeps it within reach. Windows "shared GPU memory" is not used: the
-limit is enforced before it could be, and spilling to system RAM over PCIe would
-be many times slower anyway.
+YuE2 limits itself to the memory budget minus 2 GiB. Unlike a discrete card,
+raising the budget here does not give you memory the system was not using — it
+takes it from macOS, which then swaps. Longer pieces need more memory. An
+instrumental with no lyrics tends to plan a much longer score (one real run
+planned 2,475 score tokens against 525 for a two-verse song), so lowering
+**Score sampling → Max tokens** keeps it within reach.
 
-**`fp8 requires compute capability 8.9`**
+**`fp8` does nothing, or errors**
 
-Set Quantization to `none`. An RTX 3060 is compute 8.6.
+Set Quantization to `none`. yue2 applies fp8 only on CUDA; setup leaves it off
+here for that reason.
 
 **Generate is rejected because lyrics are required**
 
@@ -452,9 +470,9 @@ is unaffected; install FFmpeg and re-render, or just download the FLAC.
 **The page loads but says the backend is unreachable**
 
 The frontend is up and the API is not. Check the newest
-`runtime\logs\backend-*.err.log`. The
+`runtime/logs/backend-*.log`. The
 most common cause is a stale lock file after a hard shutdown, which
-`Stop-SongForge.ps1` clears.
+`stop-songforge.sh` clears.
 
 **A job is stuck as "interrupted" after a crash or power cut**
 
@@ -499,17 +517,17 @@ Contributions are welcome: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Development
 
-```powershell
-runtime\venv\Scripts\python.exe -m uvicorn songforge.main:app --app-dir app\backend --reload --port 3334
+```bash
+runtime/venv/bin/python -m uvicorn songforge.main:app --app-dir app/backend --reload --port 3334
 ```
 
-```powershell
-cd app\frontend; npm run dev
+```bash
+cd app/frontend && npm run dev
 ```
 
-```powershell
-cd app\backend; ..\..\runtime\venv\Scripts\python.exe -m pytest -q
-cd app\frontend; npm run typecheck; npm run lint
+```bash
+(cd app/backend && ../../runtime/venv/bin/python -m pytest -q)
+(cd app/frontend && npm run typecheck && npm run lint)
 ```
 
 Set the runner to **Mock** in Settings to exercise the whole interface —
@@ -521,11 +539,11 @@ backend is running.
 ### Layout
 
 ```
-app\backend\songforge\   FastAPI app: api\, runners\, models, queue, storage
-app\frontend\src\        Next.js app: app\ pages, components\, lib\
-runtime\projects\        one folder per song
-runtime\database\        SQLite
-runtime\models\          weights
-runtime\logs\            service logs, pruned to the last 10 starts
-scripts\                 start, stop, test, startup task, desktop shortcuts
+app/backend/songforge/   FastAPI app: api/, runners/, models, queue, storage
+app/frontend/src/        Next.js app: app/ pages, components/, lib/
+runtime/projects/        one folder per song
+runtime/database/        SQLite
+runtime/models/          weights
+runtime/logs/            service logs, pruned to the last 10 starts
+scripts/                 start and stop; the .ps1 scripts belong to `main`
 ```

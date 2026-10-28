@@ -141,6 +141,16 @@ def test_a_small_card_is_warned_about_but_not_refused() -> None:
     assert torch_target(RTX_3060, WINDOWS).supported
 
 
+def test_metal_is_warned_about_the_cpu_vae_and_the_bfloat16_floor() -> None:
+    """Both are properties of yue2, not of SongForge, and both look like a
+    misconfiguration to someone who has not read its source."""
+    warnings = warnings_for(APPLE, MACOS)
+    assert any("VAE decoder runs on the CPU" in w for w in warnings)
+    assert any("macOS 14" in w for w in warnings)
+    # The 24 GB note is about video memory and does not apply to shared memory.
+    assert not any("24 GB" in w for w in warnings)
+
+
 def test_no_gpu_says_hours_rather_than_minutes() -> None:
     assert any("hours" in w for w in warnings_for(CPU, WINDOWS))
 

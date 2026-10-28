@@ -316,10 +316,20 @@ def _lyrics_model_present(ctx: Context) -> bool:
 
 
 def _install_ffmpeg(ctx: Context) -> None:
+    """On macOS this is the one component setup can install by itself.
+
+    Homebrew is close enough to universal on a developer's Mac that shelling
+    out to it is reasonable, and unlike winget it does not need elevation or a
+    reopened shell. If it is absent, say so rather than guessing at MacPorts.
+    """
+    if shutil.which("brew"):
+        ctx.run(["brew", "install", "ffmpeg"])
+        return
     raise SetupError(
-        "FFmpeg has to come from your platform's package manager: "
-        "winget install Gyan.FFmpeg, brew install ffmpeg, or apt install ffmpeg. "
-        "Without it SongForge still renders FLAC; only MP3 and WAV export need it."
+        "Homebrew was not found, and FFmpeg has to come from a package manager. "
+        "Install Homebrew from https://brew.sh and run setup again, or install "
+        "FFmpeg yourself. Without it SongForge still renders FLAC; only MP3 and "
+        "WAV export need it."
     )
 
 
