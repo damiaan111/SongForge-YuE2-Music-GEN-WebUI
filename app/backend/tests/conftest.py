@@ -5,6 +5,7 @@ Each test gets an isolated runtime directory, so nothing touches real projects.
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -12,6 +13,17 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# The mock runner writes WAV through the standard library so that producing
+# output never needs FFmpeg. The queue transcodes to the FLAC master only
+# when FFmpeg is on PATH, so a test that downloads FLAC depends on a binary
+# nothing here installs. That dependency used to be invisible: these tests
+# passed on a developer machine with FFmpeg and failed on a clean runner
+# with "No flac file exists for version 1". Marking them says so instead.
+needs_ffmpeg = pytest.mark.skipif(
+    shutil.which("ffmpeg") is None,
+    reason="needs FFmpeg: the FLAC master is transcoded from the runner's WAV",
+)
 
 
 @pytest.fixture(autouse=True)

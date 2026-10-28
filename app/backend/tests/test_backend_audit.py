@@ -12,7 +12,7 @@ import time
 
 import pytest
 
-from .conftest import wait_for
+from .conftest import needs_ffmpeg, wait_for
 from .test_features import make_project, settle
 
 
@@ -25,6 +25,7 @@ def generate(client, project_id: str, **payload) -> str:
 # ---------------------------------------------------- late cancel keeps audio
 
 
+@needs_ffmpeg
 def test_cancel_during_finalise_keeps_the_rendered_version(
     client, fast_mock, monkeypatch: pytest.MonkeyPatch
 ) -> None:

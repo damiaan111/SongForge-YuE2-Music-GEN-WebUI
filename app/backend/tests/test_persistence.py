@@ -13,7 +13,7 @@ from sqlmodel import Session, select
 from songforge.enums import JobStatus
 from songforge.models import Job, Project
 
-from .conftest import wait_for
+from .conftest import needs_ffmpeg, wait_for
 
 
 def restart(runtime_dir: Path) -> TestClient:
@@ -26,6 +26,7 @@ def restart(runtime_dir: Path) -> TestClient:
     return TestClient(create_app())
 
 
+@needs_ffmpeg
 def test_projects_and_versions_survive_a_restart(runtime_dir: Path, fast_mock) -> None:
     from songforge.main import create_app
 

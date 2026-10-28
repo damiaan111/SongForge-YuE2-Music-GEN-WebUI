@@ -39,6 +39,12 @@ cd app/frontend && npx tsc --noEmit && npx eslint src && npx next build && node 
 `scripts/smoke.mjs` serves a stubbed API and requests every route, which
 catches a page that compiles and then throws on render.
 
+Four tests report `skipped` without FFmpeg on `PATH`. The mock runner writes
+WAV through the standard library, and the FLAC master is transcoded from it,
+so downloading FLAC needs a binary the suite does not install. `pytest -rs`
+prints the reason. CI installs FFmpeg on the Ubuntu runner only, which is
+enough to cover a transcode that is not platform-specific.
+
 ## What a good change looks like
 
 - **Match the surrounding code.** The backend is typed, uses SQLModel, and
