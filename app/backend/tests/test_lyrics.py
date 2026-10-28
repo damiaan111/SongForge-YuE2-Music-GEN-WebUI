@@ -402,6 +402,64 @@ def test_production_notes_are_still_dropped(note: str) -> None:
     assert text == "[Verse]\nreal line"
 
 
+@pytest.mark.parametrize("vocal", [
+    # Every one of these was deleted before: the words are in the production
+    # vocabulary for the sake of "no vocals", "fade out" and "drum break", so a
+    # line made only of them looked like a note. "(no no no)" is a backing
+    # vocal in roughly half of pop music.
+    "(no no no)",
+    "(stop)",
+    "(drop)",
+    "(out)",
+    "(end)",
+    "(music)",
+    "(silence)",
+    "(up and down)",
+])
+def test_a_one_word_backing_vocal_is_not_mistaken_for_a_note(vocal: str) -> None:
+    _, _, text, _ = parse_output(
+        f"TITLE: x\nSTYLE: y\nLYRICS:\n[Chorus]\nreal line\n{vocal}\n"
+    )
+    assert text == f"[Chorus]\nreal line\n{vocal.strip('()')}"
+
+
+@pytest.mark.parametrize("note", [
+    # Dutch glues compound nouns together, so "gitaarsolo" is one token. The
+    # user writes Dutch lyrics; listing every compound is hopeless, so these
+    # are recognised by decomposing into two known words.
+    "(gitaarsolo)",
+    "(pianosolo)",
+    "(drumsolo)",
+    "(refrein)",
+    "(tussenspel)",
+    "(gesproken)",
+])
+def test_dutch_production_notes_are_dropped_including_compounds(note: str) -> None:
+    _, _, text, _ = parse_output(
+        f"TITLE: x\nSTYLE: y\nLYRICS:\n[Verse]\nreal line\n{note}\n"
+    )
+    assert text == "[Verse]\nreal line"
+
+
+def test_a_bare_break_is_read_as_an_instrumental_section() -> None:
+    """Not a classifier case: "break" is one of the section-tag aliases, so
+    "(break)" becomes an [Instrumental] marker rather than a sung word. That
+    reading predates the backing-vocal fix and is the likelier intent, so it is
+    pinned here rather than changed."""
+    _, _, text, _ = parse_output(
+        "TITLE: x\nSTYLE: y\nLYRICS:\n[Chorus]\nreal line\n(break)\n"
+    )
+    assert text == "[Chorus]\nreal line\n\n[Instrumental]"
+
+
+def test_an_unknown_word_anywhere_keeps_the_line() -> None:
+    """The classifier must not guess. One unrecognised word means it is lyrics."""
+    _, _, text, _ = parse_output(
+        "TITLE: x\nSTYLE: y\nLYRICS:\n[Verse]\nreal line\n(guitar solo of my heart)\n"
+    )
+    assert text == "[Verse]\nreal line\nguitar solo of my heart"
+
+
 def test_decorated_section_tags_are_recognised_and_repeats_expanded() -> None:
     _, _, text, warnings = parse_output(
         "TITLE: x\nSTYLE: y\nLYRICS:\n[Verse 1 - soft]\nfirst line\n"

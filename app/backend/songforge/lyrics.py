@@ -225,22 +225,80 @@ _TAG_LINE = re.compile(
 
 # A fully parenthesised line is either a production note or a backing vocal.
 # "(guitar solo)" must never be sung; "(ooh-ooh)" and "(hold me now)" are lyrics
-# and used to be deleted here, which is how whole sentences went missing. A line
-# is treated as a note only when every word in it is one of these.
-_STAGE_DIRECTION_WORDS = frozenset("""
-    solo solos instrumental interlude break intro outro verse chorus bridge
-    guitar piano keys drums drum bass synth synths strings horns brass sax
-    saxophone trumpet violin riff fill build drop beat music melody
-    fade fades out outro spoken whisper whispered shout shouted ad lib libs
-    adlib adlibs repeat repeats repeating herhaal herhaling herhalen
-    silence pause rest stop end ending no none vocals vocal x times
+# and used to be deleted here, which is how whole sentences went missing.
+#
+# Membership alone is not enough to tell them apart. Requiring only that every
+# word be known deleted "(no no no)", because "no" is in the list for the sake
+# of "no vocals" - and a single-word backing vocal is exactly what this is
+# supposed to protect. So the vocabulary is tiered, and a line has to contain
+# something that is never sung before it can be discarded.
+
+# Words that are a production instruction wherever they appear.
+_NEVER_SUNG = frozenset("""
+    solo solos instrumental interlude riff fill adlib adlibs
+    spoken whisper whispered shout shouted
+    repeat repeats repeating reprise
+    fade fades vocals vocal acapella ad lib libs lib's
+    verse chorus bridge refrain
+    herhaal herhaling herhalen gesproken gefluisterd fluistert
+    refrein couplet brug tussenspel
+    x times keer maal
 """.split())
+
+# Instrument and arrangement names. "(bass)" and "(drum break)" are notes, but
+# these never stand in for a lyric on their own either, so they also license a
+# discard.
+_INSTRUMENTS = frozenset("""
+    guitar piano keys keyboard drums drum bass synth synths strings horns
+    brass sax saxophone trumpet violin cello flute organ percussion
+    gitaar bas drums piano strijkers blazers slagwerk orgel
+""".split())
+
+# Words that only supply context. On their own they are ordinary lyrics:
+# "(no no no)", "(stop)", "(break my heart)", "(out)".
+_CONTEXT_ONLY = frozenset("""
+    a an the and or of in on to my your his her its our
+    intro outro break build drop beat music melody tune
+    silence pause rest stop end ending no none off out up down
+    stilte einde slot zonder geen zang
+""".split())
+
+_STAGE_DIRECTION_WORDS = _NEVER_SUNG | _INSTRUMENTS | _CONTEXT_ONLY
+
+# Dutch and German glue words together: "gitaarsolo" is one token that means
+# "guitar solo". Listing every compound is hopeless, so a word that is not in
+# the vocabulary is tried as a join of two words that are.
+_MIN_PART = 3
+
+
+def _decompose(word: str) -> list[str]:
+    """The word itself if known, else the two known words it is built from."""
+    if word in _STAGE_DIRECTION_WORDS:
+        return [word]
+    for cut in range(_MIN_PART, len(word) - _MIN_PART + 1):
+        head, tail = word[:cut], word[cut:]
+        if head in _STAGE_DIRECTION_WORDS and tail in _STAGE_DIRECTION_WORDS:
+            return [head, tail]
+    return []
 
 
 def _is_stage_direction(content: str) -> bool:
-    """True when a parenthesised line is a production note rather than lyrics."""
+    """True when a parenthesised line is a production note rather than lyrics.
+
+    Every word must be recognised, and at least one must be a word that is
+    never sung. The asymmetry is deliberate: keeping a stray note costs one
+    sung word, while dropping a backing vocal loses a line of the song.
+    """
     words = re.findall(r"[^\W\d_]+", content.casefold())
-    return bool(words) and all(word in _STAGE_DIRECTION_WORDS for word in words)
+    if not words:
+        return False
+    parts: list[str] = []
+    for word in words:
+        decomposed = _decompose(word)
+        if not decomposed:
+            return False
+        parts.extend(decomposed)
+    return any(part in _NEVER_SUNG or part in _INSTRUMENTS for part in parts)
 
 
 def parse_output(text: str) -> tuple[str, str, str, list[str]]:
