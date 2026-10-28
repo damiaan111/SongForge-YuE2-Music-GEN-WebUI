@@ -1,4 +1,4 @@
-# SongForge
+# SongForge | YuE2 Music GEN WebUI
 
 A self-hosted music studio for the **YuE2** text-to-music model. It runs on your
 own machine and is used from any browser on the same local network — there is no
@@ -9,8 +9,8 @@ saves a 24-bit / 48 kHz FLAC master. A reference run on a 12 GB RTX 3060
 produced **72 seconds of music in 220 seconds**, peaking at **9.3 GiB of VRAM**.
 
 ```
-git clone https://github.com/<you>/SongForge
-cd SongForge
+git clone https://github.com/damiaan111/SongForge-YuE2-Music-GEN-WebUI
+cd SongForge-YuE2-Music-GEN-WebUI
 ./setup.sh          # Windows: .\setup.ps1
 ```
 

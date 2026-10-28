@@ -65,7 +65,7 @@ def create_app() -> FastAPI:
     # whoever starts it, and overriding the root logger would also re-level it.
     logging.getLogger("songforge").setLevel(cfg.log_level.upper())
     app = FastAPI(
-        title="SongForge",
+        title="SongForge | YuE2 Music GEN WebUI",
         version=__version__,
         description=DESCRIPTION,
         lifespan=lifespan,

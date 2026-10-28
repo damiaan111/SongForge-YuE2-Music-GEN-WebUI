@@ -350,6 +350,6 @@ Write-Host "  API docs:      http://localhost:$BackendPort/api/docs" -Foreground
 Write-Host "  Logs:          $LogDir" -ForegroundColor DarkGray
 Write-Host "  Lyrics model:  $ollamaNote" -ForegroundColor DarkGray
 Write-Host ''
-Write-Host '  Stop with: .\Stop-SongForge.ps1' -ForegroundColor DarkGray
+Write-Host '  Stop with: .\scripts\Stop-SongForge.ps1' -ForegroundColor DarkGray
 Write-Host ''
 Exit-Script 0
