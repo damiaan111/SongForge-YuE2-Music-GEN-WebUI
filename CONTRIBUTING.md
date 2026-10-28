@@ -59,13 +59,19 @@ catches a page that compiles and then throws on render.
 
 ## Platforms
 
-`main` targets Windows and Linux. The `macos` branch carries the shell
-equivalents of the PowerShell scripts for Apple Silicon. YuE2 itself already
-selects Metal automatically, so that branch is about launching and installing,
-not about the model.
+`main` targets Windows and Linux and carries both sets of launch scripts:
+`scripts/*.ps1` and the `scripts/*.sh` equivalents. Hardware detection on
+`main` already has an Apple branch, and YuE2 selects Metal by itself, so
+`main` is not CUDA-only.
 
-If you are fixing something in shared code, fix it on `main`; the macOS branch
-merges from it.
+The `macos` branch is the small remainder that only makes sense on a Mac:
+the Metal-specific warnings, FFmpeg through Homebrew, finding Ollama in an
+app bundle, and a macOS-first README. Its `docs/macos.md` lists the files it
+is allowed to differ in.
+
+Fix shared code on `main`. The macOS branch merges from it, and a merge
+conflict outside those few files means something platform-specific has leaked
+into shared code.
 
 ## Reporting a problem
 

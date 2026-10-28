@@ -1,0 +1,44 @@
+# Line endings are decided here rather than by whoever happens to clone.
+#
+# Git's default already does the right thing when core.autocrlf is true, which
+# it is on a Git-for-Windows install: LF in the repository, CRLF in the working
+# tree. But that is a per-machine setting, so a Windows contributor with
+# autocrlf=false commits CRLF, and a .sh with CRLF fails on macOS and Linux
+# with "bad interpreter: /usr/bin/env bash^M". setup.sh is the first thing
+# anyone runs, so that failure is worth making impossible rather than unlikely.
+
+# Everything textual is stored as LF. Git still checks text out as CRLF on
+# Windows where that is the platform convention.
+* text=auto
+
+# These stay LF in the working tree too, because the tools that read them
+# (bash, python, node) are not always the Windows build.
+*.sh            text eol=lf
+*.py            text eol=lf
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.mjs           text eol=lf
+*.js            text eol=lf
+*.json          text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.md            text eol=lf
+*.toml          text eol=lf
+*.css           text eol=lf
+.gitattributes  text eol=lf
+.gitignore      text eol=lf
+.env.example    text eol=lf
+
+# PowerShell keeps CRLF: it is Windows-only by definition, and CRLF is what
+# every tool there expects to find in it.
+*.ps1           text eol=crlf
+
+# Never converted.
+*.png           binary
+*.jpg           binary
+*.ico           binary
+*.flac          binary
+*.wav           binary
+*.mp3           binary
+*.safetensors   binary
+*.whl           binary
