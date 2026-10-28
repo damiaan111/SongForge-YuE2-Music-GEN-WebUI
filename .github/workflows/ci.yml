@@ -25,9 +25,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Windows is the platform most people run this on; Ubuntu catches the
-        # path separator and case sensitivity mistakes that Windows hides.
-        os: [windows-latest, ubuntu-latest]
+        # macos-latest is Apple Silicon, so it is the only runner that
+        # exercises this branch's reason to exist: the sysctl probe, the
+        # arm64 check and the Metal warnings all run on real hardware here.
+        # Windows and Ubuntu stay because this branch tracks main and a
+        # shared-code regression should fail here too, not only there.
+        os: [macos-latest, windows-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -63,6 +66,42 @@ jobs:
 
       - name: Dry-run an install
         run: python app/backend/songforge/setup/__main__.py --only=backend --dry-run
+
+  setup-detection-macos:
+    name: Setup detects Apple Silicon
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The sysctl probe and the arm64 guard cannot be tested anywhere else:
+      # a test can fake a Machine, but not hw.memsize. This asserts the real
+      # detection reaches the Apple branch and chooses the Metal wheel, so a
+      # change that silently drops to the CPU target fails here.
+      - name: Detect, and insist it found Metal
+        run: |
+          python app/backend/songforge/setup/__main__.py --detect | tee detected.json
+          python - <<'CHECK'
+          import json
+          d = json.load(open("detected.json"))
+          assert d["gpu"]["vendor"] == "apple", d["gpu"]
+          assert d["torch"]["index_url"] is None, d["torch"]
+          assert d["settings"]["quantization"] == "none", d["settings"]
+          assert d["settings"]["memory_budget_gib"] > 0, d["settings"]
+          assert any("VAE decoder" in w for w in d["warnings"]), d["warnings"]
+          print("detected:", d["gpu"]["name"], d["settings"]["memory_budget_gib"], "GiB")
+          CHECK
+
+      - name: The launch scripts must be LF and executable
+        run: |
+          for f in setup.sh scripts/start-songforge.sh scripts/stop-songforge.sh; do
+            test -x "$f" || { echo "$f is not executable"; exit 1; }
+            bash -n "$f"
+            ! grep -q $'\r' "$f" || { echo "$f has CRLF line endings"; exit 1; }
+          done
 
   frontend:
     name: Frontend
