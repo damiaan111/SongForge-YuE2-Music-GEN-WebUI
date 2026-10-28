@@ -431,3 +431,78 @@ def test_an_existing_settings_row_is_never_overwritten(runtime_dir) -> None:
 
     with Session(get_engine()) as session:
         assert session.get(AppSettings, 1).memory_budget_gib == 6.5
+
+
+# ------------------------------------------- the interpreter setup runs under
+
+
+def test_an_old_interpreter_is_refused_before_a_venv_is_built(tmp_path, capsys) -> None:
+    """_create_venv builds from sys.executable, so running setup on 3.11 makes
+    a venv the backend cannot be installed into. Left alone it fails two
+    minutes later inside pip with "requires a different Python", which reads
+    like a packaging fault. --yes and --only never show the menu, so the
+    menu's warning does not help."""
+    import sys as _sys
+
+    from songforge.setup import cli
+
+    original = _sys.version_info
+    try:
+        _sys.version_info = (3, 11, 9, "final", 0)  # type: ignore[assignment]
+        code = cli.main(["--root", str(tmp_path), "--only=backend"])
+    finally:
+        _sys.version_info = original  # type: ignore[assignment]
+
+    assert code == 2
+    message = capsys.readouterr().err
+    assert "3.11.9" in message and "3.12" in message
+    assert "setup.sh" in message
+    # Nothing may have been created on the way to refusing.
+    assert not (tmp_path / "runtime" / "venv").exists()
+
+
+def test_detect_still_works_on_an_old_interpreter(tmp_path, capsys) -> None:
+    """--detect is what a bug report asks for; someone on 3.11 still needs it."""
+    import sys as _sys
+
+    from songforge.setup import cli
+
+    original = _sys.version_info
+    try:
+        _sys.version_info = (3, 11, 9, "final", 0)  # type: ignore[assignment]
+        code = cli.main(["--root", str(tmp_path), "--detect"])
+    finally:
+        _sys.version_info = original  # type: ignore[assignment]
+
+    assert code == 0
+    assert '"gpu"' in capsys.readouterr().out
+
+
+def test_every_module_level_import_is_a_declared_dependency() -> None:
+    """httpx was declared only under [test] while lyrics.py imports it at
+    module scope, so CI (which installs the test extra) passed while a real
+    setup run produced an environment that could not import the app."""
+    import re
+    import tomllib
+    from pathlib import Path
+
+    backend = Path(__file__).resolve().parents[1]
+    manifest = tomllib.loads((backend / "pyproject.toml").read_text(encoding="utf-8"))
+    declared = {
+        re.split(r"[<>=\[]", item)[0].strip().replace("-", "_").lower()
+        for item in manifest["project"]["dependencies"]
+    }
+    # Distribution names do not always match the import name.
+    declared |= {"pydantic_settings", "sqlalchemy"}
+
+    stdlib = set(__import__("sys").stdlib_module_names)
+    imported: set[str] = set()
+    for path in (backend / "songforge").rglob("*.py"):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            match = re.match(r"^(?:from|import)\s+([a-zA-Z_][\w]*)", line)
+            if match:
+                imported.add(match.group(1).lower())
+
+    missing = imported - declared - stdlib - {"songforge"}
+    assert not missing, f"imported at module scope but not declared: {sorted(missing)}"
+
