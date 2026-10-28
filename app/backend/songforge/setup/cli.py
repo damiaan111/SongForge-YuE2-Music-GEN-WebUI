@@ -11,6 +11,7 @@ from pathlib import Path
 
 from . import menu
 from .components import Context
+from .hardware import REQUIRED_PYTHON
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -93,7 +94,33 @@ def main(argv: list[str] | None = None) -> int:
     ctx = Context.discover(root=args.root, dry_run=args.dry_run)
 
     if args.detect:
+        # Deliberately allowed on an old interpreter: --detect is what a bug
+        # report asks for, and someone on 3.11 still needs to be able to run
+        # it. The version shows up in its output and in the warnings.
         return _detect_only(ctx)
+
+    if sys.version_info[:2] < REQUIRED_PYTHON and not args.dry_run:
+        # _create_venv builds from sys.executable, so an old interpreter here
+        # produces a venv the backend cannot be installed into. Left to run, it
+        # fails two minutes later inside pip with "requires a different
+        # Python", which reads like a packaging fault rather than a wrong
+        # interpreter. The menu's warning does not help: --yes and --only never
+        # show the menu.
+        found = ".".join(str(part) for part in sys.version_info[:3])
+        wanted = ".".join(str(part) for part in REQUIRED_PYTHON)
+        print(
+            f"\nThis is Python {found}; SongForge needs {wanted} or newer.\n"
+            f"\nThe virtual environment is built from whatever interpreter runs"
+            f" setup,\nso continuing would build one that cannot be used.\n"
+            f"\n  Use the launcher, which finds a suitable interpreter for you:"
+            f"\n    ./setup.sh          (Windows: .\\setup.ps1)\n"
+            f"\n  Or name one yourself:\n"
+            f"    py -3.12 app/backend/songforge/setup/__main__.py\n"
+            f"    python3.12 app/backend/songforge/setup/__main__.py\n"
+            f"\n--detect still works on this interpreter.\n",
+            file=sys.stderr,
+        )
+        return 2
 
     rows = menu.build_rows(ctx)
 

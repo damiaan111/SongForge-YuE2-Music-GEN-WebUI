@@ -24,6 +24,11 @@ from typing import Literal
 
 Vendor = Literal["nvidia", "apple", "amd", "cpu"]
 
+# The interpreter floor. setup itself runs on anything from 3.9 up - it is
+# standard library only on purpose - but the venv it builds comes from
+# whatever interpreter is running it, and the backend needs 3.12.
+REQUIRED_PYTHON = (3, 12)
+
 # yue2_infer pins this exactly, so every variant we install must match it.
 TORCH_VERSION = "2.10.0"
 
@@ -380,10 +385,11 @@ def warnings_for(gpu: Gpu, machine: Machine | None = None) -> list[str]:
     machine = machine or detect_machine()
     out: list[str] = []
 
-    if machine.python < (3, 12):
+    if machine.python < REQUIRED_PYTHON:
+        wanted = ".".join(str(part) for part in REQUIRED_PYTHON)
         out.append(
-            f"Python {'.'.join(str(p) for p in machine.python)} is older than the 3.12 "
-            "this project needs."
+            f"Python {'.'.join(str(p) for p in machine.python)} is older than the "
+            f"{wanted} this project needs."
         )
 
     if gpu.vendor == "cpu":
