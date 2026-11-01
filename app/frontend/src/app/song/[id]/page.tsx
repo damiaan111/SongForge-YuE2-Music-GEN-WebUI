@@ -518,7 +518,9 @@ export default function SongPage() {
             tabIndex={tab === name ? 0 : -1}
             onClick={() => setTab(name)}
             className={cn(
-              "whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors",
+              // The strip scrolls sideways, so it clips the focus ring above
+              // and below; sf-focus-inset draws it inside the tab instead.
+              "sf-focus-inset whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors",
               tab === name
                 ? "border-[var(--sf-accent)] text-[var(--sf-text)]"
                 : "border-transparent text-[var(--sf-text-muted)] hover:text-[var(--sf-text)]",

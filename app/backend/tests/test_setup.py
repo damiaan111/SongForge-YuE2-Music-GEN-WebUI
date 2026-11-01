@@ -90,17 +90,22 @@ def test_an_unreadable_driver_does_not_block_the_install() -> None:
 
 # ------------------------------------------------------------------ profiles
 
-def test_the_3060_profile_matches_the_settings_this_was_tuned_with() -> None:
-    """The hand-tuned numbers this project shipped with, derived rather than typed."""
+def test_the_budget_is_the_whole_card_because_yue2_keeps_its_own_reserve() -> None:
+    """yue2 caps PyTorch at min(budget, card) - 2 GiB.
+
+    Asking for less than the card only lowers that cap. A budget of 11 on this
+    12 GB card left 9 GiB, which could not synthesise more than about two
+    minutes of audio; the card itself leaves 10.
+    """
     profile = settings_profile(RTX_3060)
-    assert profile["memory_budget_gib"] == 11.0
+    assert profile["memory_budget_gib"] == 12.0
     assert profile["offload_ar"] is True
     assert profile["quantization"] == "none"  # compute 8.6 cannot do fp8
 
 
-def test_a_big_modern_card_gets_more_headroom_and_fp8() -> None:
+def test_a_big_modern_card_gets_its_whole_budget_and_fp8() -> None:
     profile = settings_profile(RTX_4090)
-    assert profile["memory_budget_gib"] == 22.0
+    assert profile["memory_budget_gib"] == 24.0
     assert profile["offload_ar"] is False
     assert profile["quantization"] == "fp8"
 
@@ -268,6 +273,70 @@ def test_a_failed_optional_step_is_skipped_and_the_rest_continues(tmp_path) -> N
     assert results[1] == ("Backend", "installed")
 
 
+def test_the_frontend_is_built_not_just_installed(tmp_path, monkeypatch) -> None:
+    """`next start` refuses to run without a production build.
+
+    Setup used to stop after `npm install`, which reported success and then
+    could not start: "Could not find a production build in the '.next'
+    directory".
+    """
+    from songforge.setup import components
+
+    monkeypatch.setattr(components.shutil, "which", lambda _name: "npm")
+    ran: list[tuple[list[str], dict]] = []
+    ctx = make_context(tmp_path)
+    ctx.run = lambda argv, **kwargs: ran.append(([str(a) for a in argv], kwargs))  # type: ignore[method-assign]
+
+    components._install_frontend(ctx)
+
+    commands = [argv for argv, _ in ran]
+    assert commands == [["npm", "install"], ["npm", "run", "build"]]
+    # Next.js writes its telemetry config into the user profile; on Windows
+    # that rename fails with EXDEV across volumes and takes the build with it.
+    assert ran[1][1]["env"] == {"NEXT_TELEMETRY_DISABLED": "1"}
+    assert all(kwargs.get("cwd") == ctx.frontend_dir for _argv, kwargs in ran)
+
+
+def test_an_unbuilt_frontend_counts_as_not_installed(tmp_path) -> None:
+    from songforge.setup.components import _frontend_present
+
+    ctx = make_context(tmp_path)
+    (ctx.frontend_dir / "node_modules" / "next").mkdir(parents=True)
+    assert _frontend_present(ctx) is False, "packages alone cannot serve the app"
+
+    build = ctx.frontend_dir / ".next"
+    build.mkdir()
+    (build / "BUILD_ID").write_text("abc", encoding="utf-8")
+    assert _frontend_present(ctx) is True
+
+
+def test_run_passes_extra_environment_without_dropping_the_rest(tmp_path) -> None:
+    import os
+
+    ctx = make_context(tmp_path)
+    ctx.dry_run = False
+    seen: dict = {}
+
+    def fake_run(argv, cwd=None, env=None):
+        seen["env"] = env
+        class Done:
+            returncode = 0
+        return Done()
+
+    from songforge.setup import components
+
+    original = components.subprocess.run
+    components.subprocess.run = fake_run
+    try:
+        ctx.run(["x"], env={"ADDED": "1"})
+    finally:
+        components.subprocess.run = original
+
+    assert seen["env"]["ADDED"] == "1"
+    assert "PATH" in seen["env"], "the child would lose PATH and fail to find npm"
+    assert len(seen["env"]) > len(os.environ) - 2
+
+
 def test_dry_run_runs_nothing(tmp_path) -> None:
     lines: list[str] = []
     ctx = Context(root=tmp_path, machine=WINDOWS, gpu=RTX_3060,
@@ -285,7 +354,7 @@ def test_the_written_profile_is_what_the_backend_needs(tmp_path) -> None:
 
     written = json.loads(path.read_text(encoding="utf-8"))
     assert written["gpu"]["name"] == "RTX 3060"
-    assert written["settings"]["memory_budget_gib"] == 11.0
+    assert written["settings"]["memory_budget_gib"] == 12.0
     assert written["paths"]["model_path"].endswith("YuE2-3B")
     assert written["paths"]["python_executable"].endswith("python.exe")
 
@@ -332,7 +401,7 @@ def test_a_profile_round_trips_from_setup_into_the_backend(tmp_path) -> None:
 
     seeded = hardware_profile.seed_values(profile)
     assert seeded["runner_kind"] == "yue2_cli"
-    assert seeded["memory_budget_gib"] == 22.0
+    assert seeded["memory_budget_gib"] == 24.0
 
 
 def test_a_half_finished_install_stays_on_the_mock_runner(tmp_path) -> None:

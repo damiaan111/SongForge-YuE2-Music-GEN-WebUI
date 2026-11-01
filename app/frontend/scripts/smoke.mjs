@@ -305,6 +305,15 @@ async function main() {
 
     const missing = await fetch(`${base}/no-such-route`, { signal: AbortSignal.timeout(15_000) });
     check("unknown route returns 404", missing.status === 404, `status ${missing.status}`);
+
+    // Controls inside a container that clips - the segmented view toggle, the
+    // scrolling tab strip, a drop-down menu - must draw their focus ring on
+    // the inside, or it is cut off and the button looks like it is breaking
+    // out of its box when focused.
+    const library = await fetch(`${base}/`).then((r) => r.text());
+    check("clipped controls keep their focus ring inside",
+      library.includes("sf-focus-inset"),
+      "the view toggle lost its sf-focus-inset class");
   } finally {
     stop(next);
     stub.close();

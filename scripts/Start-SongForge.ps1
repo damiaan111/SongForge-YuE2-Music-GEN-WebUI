@@ -191,7 +191,15 @@ if (-not (Test-Path (Join-Path $Frontend 'package.json'))) {
     Exit-Script 4
 }
 if (-not (Test-Path (Join-Path $Frontend 'node_modules'))) {
-    Write-Fail "Frontend dependencies are not installed.`nRun: cd `"$Frontend`"; npm install"
+    Write-Fail "Frontend dependencies are not installed.`nRun setup again: .\setup.ps1"
+    Exit-Script 4
+}
+# `next start` refuses to run without a production build, and said so only
+# after the start timed out. Checking here names the fix instead.
+if (-not (Test-Path (Join-Path $Frontend '.next\BUILD_ID'))) {
+    Write-Fail ("The web app has not been built.`n" +
+                "Run setup again (.\setup.ps1), or build it directly:`n" +
+                "  cd `"$Frontend`"; npm run build")
     Exit-Script 4
 }
 

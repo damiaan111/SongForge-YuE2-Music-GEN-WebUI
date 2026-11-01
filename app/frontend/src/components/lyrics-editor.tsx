@@ -517,7 +517,8 @@ function TemplateMenu({
                 onPick(template);
               }}
               className={cn(
-                "block w-full px-3 py-2 text-left hover:bg-[var(--sf-bg-overlay)]",
+                // The menu clips its corners; keep the focus ring inside.
+                "sf-focus-inset block w-full px-3 py-2 text-left hover:bg-[var(--sf-bg-overlay)]",
               )}
             >
               <span className="block text-xs font-medium">{template.name}</span>

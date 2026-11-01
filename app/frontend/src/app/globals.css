@@ -91,6 +91,17 @@ body {
   border-radius: 0.35rem;
 }
 
+/* The ring above is drawn two pixels outside the control, so any container
+   that clips - a segmented toggle with rounded corners, a drop-down menu, a
+   tab strip that scrolls sideways - cuts it off, and the focused button looks
+   like it is breaking out of its box. (overflow-x: auto also forces
+   overflow-y to auto, which is why a scrolling strip clips top and bottom.)
+   These controls draw the ring just inside themselves instead: the whole ring
+   stays visible and the clipping the layout needs is kept. */
+.sf-focus-inset:focus-visible {
+  outline-offset: -2px;
+}
+
 /* Scrollbars that match the surface rather than the OS default. */
 * {
   scrollbar-width: thin;

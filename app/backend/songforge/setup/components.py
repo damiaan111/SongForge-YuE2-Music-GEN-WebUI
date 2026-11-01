@@ -107,11 +107,15 @@ class Context:
         return venv / ("Scripts/python.exe" if self.machine.is_windows else "bin/python")
 
     # --- running things --------------------------------------------------
-    def run(self, argv: Sequence[str], *, cwd: Path | None = None) -> None:
+    def run(
+        self, argv: Sequence[str], *, cwd: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> None:
         """Run a command, streaming its output, and raise if it fails.
 
         Output is streamed rather than captured because these are multi-minute
         downloads: a silent terminal for six minutes looks like a hang.
+        ``env`` adds to this process's environment rather than replacing it.
         """
         printable = " ".join(str(part) for part in argv)
         if self.dry_run:
@@ -119,7 +123,8 @@ class Context:
             return
         self.log(f"    $ {printable}")
         try:
-            done = subprocess.run([str(part) for part in argv], cwd=str(cwd) if cwd else None)
+            done = subprocess.run([str(part) for part in argv], cwd=str(cwd) if cwd else None,
+                                  env={**os.environ, **env} if env else None)
         except OSError as exc:
             raise SetupError(f"Could not start {argv[0]}: {exc}") from exc
         if done.returncode != 0:
@@ -212,6 +217,23 @@ def _install_frontend(ctx: Context) -> None:
     if npm is None:
         raise SetupError("npm was not found on PATH, although node was.")
     ctx.run([npm, "install"], cwd=ctx.frontend_dir)
+    # The start script serves the app with `next start`, which refuses to run
+    # without a production build: "Could not find a production build in the
+    # '.next' directory". Installing the packages and stopping there left a
+    # setup that reported success and then could not start.
+    #
+    # Telemetry is turned off for this one command because Next.js writes its
+    # telemetry config into the user profile, and on Windows that rename fails
+    # with EXDEV when the profile is on another volume - taking the whole
+    # build, and the install, down with it.
+    ctx.run([npm, "run", "build"], cwd=ctx.frontend_dir,
+            env={"NEXT_TELEMETRY_DISABLED": "1"})
+
+
+def _frontend_present(ctx: Context) -> bool:
+    """Packages installed *and* built - `next start` needs both."""
+    return ((ctx.frontend_dir / "node_modules" / "next").is_dir()
+            and (ctx.frontend_dir / ".next" / "BUILD_ID").is_file())
 
 
 def _torch_wheel(ctx: Context) -> Path | None:
@@ -403,11 +425,11 @@ def catalogue(ctx: Context) -> list[Component]:
         Component(
             key="frontend",
             title="Node.js frontend packages",
-            detail="Next.js and its dependencies, in app/frontend/node_modules.",
-            size_bytes=430 * 1024 * 1024,
+            detail="Next.js and its dependencies, then a production build of the web app.",
+            size_bytes=520 * 1024 * 1024,
             required=True,
             install=_install_frontend,
-            present=lambda c: (c.frontend_dir / "node_modules" / "next").is_dir(),
+            present=_frontend_present,
             unavailable=_node_problem,
         ),
         Component(

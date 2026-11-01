@@ -294,7 +294,9 @@ export default function LibraryPage() {
                       aria-pressed={view === mode}
                       aria-label={`${mode} view`}
                       className={cn(
-                        "px-2.5 py-2",
+                        // The group clips its corners, which would cut the
+                        // focus ring; sf-focus-inset draws it inside instead.
+                        "sf-focus-inset px-2.5 py-2",
                         view === mode
                           ? "bg-[var(--sf-bg-overlay)] text-[var(--sf-text)]"
                           : "text-[var(--sf-text-muted)] hover:text-[var(--sf-text)]",

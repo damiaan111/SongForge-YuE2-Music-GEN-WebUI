@@ -163,7 +163,7 @@ export function SongCard({
               role="menuitem"
               href={api.exportZipUrl(project.id)}
               onClick={() => setMenuOpen(false)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--sf-text-muted)] hover:bg-[var(--sf-bg-overlay)] hover:text-[var(--sf-text)]"
+              className="sf-focus-inset flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--sf-text-muted)] hover:bg-[var(--sf-bg-overlay)] hover:text-[var(--sf-text)]"
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
               Export .zip
@@ -231,7 +231,7 @@ export function SongCard({
               type="button"
               onClick={onPlay}
               aria-label={playing ? `Pause ${project.title}` : `Play ${project.title}`}
-              className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+              className="sf-focus-inset absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             >
               {playing ? (
                 <Pause className="h-4 w-4 text-white" aria-hidden="true" />
@@ -288,7 +288,7 @@ export function SongCard({
             type="button"
             onClick={onPlay}
             aria-label={playing ? `Pause ${project.title}` : `Play ${project.title}`}
-            className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            className="sf-focus-inset absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
           >
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--sf-accent)]">
               {playing ? (
@@ -381,7 +381,9 @@ function MenuItem({
       role="menuitem"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[var(--sf-bg-overlay)]",
+        // The menu clips its rounded corners, so the focus ring is drawn
+        // inside the item rather than two pixels outside it.
+        "sf-focus-inset flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[var(--sf-bg-overlay)]",
         danger
           ? "text-[var(--sf-danger)]"
           : "text-[var(--sf-text-muted)] hover:text-[var(--sf-text)]",

@@ -197,7 +197,8 @@ export function ScoreTab({
                 onClick={() => setView(mode)}
                 aria-pressed={view === mode}
                 className={cn(
-                  "px-3 py-1.5 text-xs capitalize",
+                  // The group clips its corners; keep the focus ring inside.
+                  "sf-focus-inset px-3 py-1.5 text-xs capitalize",
                   view === mode
                     ? "bg-[var(--sf-bg-overlay)] text-[var(--sf-text)]"
                     : "text-[var(--sf-text-muted)] hover:text-[var(--sf-text)]",

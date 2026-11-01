@@ -312,8 +312,9 @@ def settings_profile(gpu: Gpu) -> dict:
     These replace the constants that were a 12 GB RTX 3060's numbers:
     ``memory_budget_gib = 11.0``, AR offload always on, fp8 never available.
 
-    - The budget leaves headroom for the desktop compositor and for PyTorch's
-      own allocator; one GiB on a small card, two on a large one.
+    - The budget is the whole card. yue2 keeps its own reserve back on top of
+      it, so subtracting headroom here only makes the cap smaller - see the
+      NVIDIA branch below.
     - AR offload trades speed for memory and is only worth it when memory is
       the binding constraint.
     - fp8 needs compute capability 8.9 (Ada / Hopper). On anything older it is
@@ -353,8 +354,14 @@ def settings_profile(gpu: Gpu) -> dict:
         profile["memory_efficient_attention"] = False
     else:
         card = memory or 12.0
-        headroom = 2.0 if card >= 20.0 else 1.0
-        profile["memory_budget_gib"] = round(max(4.0, card - headroom), 1)
+        # The whole card, deliberately. yue2 caps PyTorch at
+        # min(budget, card) - 2 GiB (pipeline.py), so it already keeps 2 GiB
+        # back for the desktop and the allocator. Taking more headroom off
+        # here just lowers that cap: on a 12 GB card a budget of 11 left
+        # 9 GiB, and synthesising anything past about two minutes of audio
+        # then ran out of memory. A budget above the card is harmless, since
+        # yue2 clamps to the card either way.
+        profile["memory_budget_gib"] = round(max(4.0, card), 1)
         profile["offload_ar"] = card < 16.0
         if gpu.compute and (gpu.compute[0], gpu.compute[1]) >= (8, 9):
             profile["quantization"] = "fp8"
