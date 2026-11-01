@@ -33,6 +33,22 @@ runtime\venv-yue2\Scripts\python.exe -m pip install torch==2.10.0 --index-url ht
 runtime\venv-yue2\Scripts\python.exe -m pip install runtime\yue2_infer-0.1.5-py3-none-any.whl
 ```
 
+The CUDA build of PyTorch is a 2.9 GB download. If the connection drops part
+way through, pip starts again from nothing, and on Windows the clean-up
+afterwards can fail with `WinError 32` because a virus scanner is still
+holding the half-written file. `setup.ps1` avoids both by fetching the wheel
+to `runtime\downloads` first, resuming where it stopped. By hand, `curl` does
+the same job — run the first line again as often as you need, it continues:
+
+```powershell
+curl.exe -L -C - --retry 10 --retry-all-errors -o "runtime\downloads\torch-2.10.0+cu128-cp312-cp312-win_amd64.whl" "https://download.pytorch.org/whl/cu128/torch-2.10.0%2Bcu128-cp312-cp312-win_amd64.whl"
+runtime\venv-yue2\Scripts\python.exe -m pip install "runtime\downloads\torch-2.10.0+cu128-cp312-cp312-win_amd64.whl" --index-url https://download.pytorch.org/whl/cu128
+```
+
+A file left in `runtime\downloads` is picked up by `setup.ps1` on the next run,
+as long as its checksum matches the one the index publishes, so downloading it
+in a browser and dropping it there works too.
+
 **3. Model weights** (~20 GB, once)
 
 ```powershell

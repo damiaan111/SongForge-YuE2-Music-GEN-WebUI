@@ -19,7 +19,16 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .hardware import Gpu, Machine, TorchTarget, detect_gpu, detect_machine, torch_target
+from .download import DownloadError, fetch, find_wheel
+from .hardware import (
+    TORCH_VERSION,
+    Gpu,
+    Machine,
+    TorchTarget,
+    detect_gpu,
+    detect_machine,
+    torch_target,
+)
 
 # The model repository carries its own inference wheel; it is not on PyPI.
 # Taken from the official model card at https://huggingface.co/m-a-p/YuE2-3B.
@@ -88,6 +97,11 @@ class Context:
     @property
     def models_dir(self) -> Path:
         return self.runtime / "models"
+
+    @property
+    def downloads_dir(self) -> Path:
+        """Large files fetched before pip sees them, kept across setup runs."""
+        return self.runtime / "downloads"
 
     def python_in(self, venv: Path) -> Path:
         return venv / ("Scripts/python.exe" if self.machine.is_windows else "bin/python")
@@ -200,12 +214,58 @@ def _install_frontend(ctx: Context) -> None:
     ctx.run([npm, "install"], cwd=ctx.frontend_dir)
 
 
+def _torch_wheel(ctx: Context) -> Path | None:
+    """Fetch the PyTorch wheel ourselves, or return None to let pip do it.
+
+    A CUDA wheel is 2.9 GB, and pip keeps it in a temporary directory while it
+    downloads: when the connection drops often enough, every retry has nothing
+    to resume from, and on Windows the clean-up that follows fails as
+    "WinError 32" because the scanner still holds the half-written file.
+    Fetching it to runtime/downloads first means an interrupted setup carries
+    on from where it stopped. See download.py.
+    """
+    if ctx.dry_run or not ctx.torch.index_url:
+        return None
+    try:
+        wheel = find_wheel(ctx.torch.index_url, "torch", TORCH_VERSION, ctx.machine)
+    except DownloadError as exc:
+        ctx.log(f"    {exc}; letting pip fetch PyTorch instead")
+        return None
+    if wheel is None:
+        ctx.log("    no published wheel matches this machine; letting pip choose")
+        return None
+
+    destination = ctx.downloads_dir / wheel.filename
+    ctx.log(f"    fetching {wheel.filename}")
+    try:
+        return fetch(wheel, destination, log=ctx.log)
+    except DownloadError as exc:
+        raise SetupError(
+            f"{exc}\n"
+            f"    What arrived is kept in {ctx.downloads_dir}, so running setup "
+            "again continues from there.\n"
+            "    If it stops at the same place every time, exclude that folder "
+            "from your virus scanner, or\n"
+            "    download the file yourself, put it in that folder, and run "
+            f"setup again:\n      {wheel.url}"
+        ) from exc
+
+
 def _install_torch(ctx: Context) -> None:
     if not ctx.torch.supported:
         raise SetupError(ctx.torch.problem)
     _create_venv(ctx, ctx.venv_yue2)
     _pip(ctx, ctx.venv_yue2, "install", "--upgrade", "pip")
-    _pip(ctx, ctx.venv_yue2, "install", *ctx.torch.pip_arguments)
+    wheel = _torch_wheel(ctx)
+    if wheel is None:
+        _pip(ctx, ctx.venv_yue2, "install", *ctx.torch.pip_arguments)
+        return
+    # Only the large wheel comes from disk; torch's own dependencies are still
+    # resolved from the index that matches this build.
+    arguments = [str(wheel)]
+    if ctx.torch.index_url:
+        arguments += ["--index-url", ctx.torch.index_url]
+    _pip(ctx, ctx.venv_yue2, "install", *arguments)
 
 
 def _torch_present(ctx: Context) -> bool:

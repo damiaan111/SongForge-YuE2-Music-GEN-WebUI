@@ -351,6 +351,23 @@ weight checksums are re-verified, and Settings will report any mismatch.
 
 ## Troubleshooting
 
+**Setup stops while downloading PyTorch, or ends with `WinError 32`**
+
+The CUDA build is a 2.9 GB file, and on a connection that drops it is the step
+that fails. Setup fetches it to `runtime/downloads` and continues where it
+stopped, so the first thing to try is **running setup again** — it picks up the
+part that already arrived instead of starting over.
+
+If it stops at the same point every time, something is cutting the transfer:
+
+- Exclude `runtime\downloads` from your virus scanner. `WinError 32 - the
+  process cannot access the file because it is being used by another process`
+  is a scanner holding the file open while setup tries to finish with it.
+- Or download the wheel yourself, put it in `runtime\downloads`, and run setup
+  again. It checks the file against the checksum the index publishes and skips
+  the download when it matches. The exact URL is printed in the error, and
+  `docs/manual-install.md` has a `curl` command that resumes.
+
 **The model fails to load, or Windows reports it is out of memory**
 
 Set a large pagefile on the drive holding the runtime folder. Loading a 3B model
