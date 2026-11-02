@@ -62,12 +62,14 @@ const STUB_ROUTES = {
     model_path: "",
     vae_path: "standard",
     gpu_index: 0,
-    memory_budget_gib: 11,
+    memory_budget_gib: 12,
     offload_ar: false,
     backend_mode: "torch-eager",
     quantization: "none",
     offline_mode: false,
-    command_template: "generate --model={model}",
+    // Blank, as a fresh install ships it: the backend falls back to
+    // default_command_template. The Settings form must accept this.
+    command_template: "",
     default_cot: "full",
     default_cfg_scale: 1,
     export_mp3: false,

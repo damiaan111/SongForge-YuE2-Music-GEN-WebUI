@@ -216,21 +216,49 @@ export function ScoreTab({
               className="mx-auto mb-3 h-8 w-8 text-[var(--sf-text-faint)]"
               aria-hidden="true"
             />
-            <p className="text-sm">No score yet</p>
-            <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-[var(--sf-text-muted)]">
-              Run <strong>Plan only</strong> to write the score without spending
-              the time on audio. Then edit it here and render.
-            </p>
-            {canPlan && (
-              <Button
-                variant="primary"
-                className="mt-4"
-                onClick={onPlan}
-                loading={busy}
-              >
-                <ListMusic className="h-4 w-4" aria-hidden="true" />
-                Plan the score
-              </Button>
+            {/* A rendered version carries its own score, and the editor
+                starts empty until something is loaded into it. Saying "no
+                score yet" there is simply untrue, and sending the user off
+                to Plan only re-writes a score they already have. */}
+            {versionScore ? (
+              <>
+                <p className="text-sm">Nothing in the editor yet</p>
+                <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-[var(--sf-text-muted)]">
+                  Version {version?.number} was rendered from a score. Load it
+                  to reharmonise, change a melody or develop a solo, then
+                  render again with the seed pinned.
+                </p>
+                <Button
+                  variant="primary"
+                  className="mt-4"
+                  onClick={() => {
+                    setText(versionScore);
+                    setSaved(false);
+                  }}
+                >
+                  <ListMusic className="h-4 w-4" aria-hidden="true" />
+                  Load version {version?.number}&rsquo;s score
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm">No score yet</p>
+                <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-[var(--sf-text-muted)]">
+                  Run <strong>Plan only</strong> to write the score without
+                  spending the time on audio. Then edit it here and render.
+                </p>
+                {canPlan && (
+                  <Button
+                    variant="primary"
+                    className="mt-4"
+                    onClick={onPlan}
+                    loading={busy}
+                  >
+                    <ListMusic className="h-4 w-4" aria-hidden="true" />
+                    Plan the score
+                  </Button>
+                )}
+              </>
             )}
           </div>
         ) : (
@@ -380,30 +408,45 @@ export function ScoreTab({
             above become the next one. Switch versions at the top of the page to
             compare against a different take.
           </p>
-          <LineDiff
-            before={versionScore}
-            after={text}
-            beforeLabel={`version ${version?.number ?? ""}`.trim()}
-            afterLabel="the editor"
-          />
-          <details className="mt-3">
-            <summary className="cursor-pointer text-[11px] text-[var(--sf-text-faint)]">
-              Show the whole score
-            </summary>
-            <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-[var(--sf-bg)] p-3 font-mono text-[11px] leading-5 text-[var(--sf-text-muted)]">
+          {/* Diffing a score against an empty editor marks every line
+              removed, which reads as damage rather than a comparison. */}
+          {text.trim() ? (
+            <LineDiff
+              before={versionScore}
+              after={text}
+              beforeLabel={`version ${version?.number ?? ""}`.trim()}
+              afterLabel="the editor"
+            />
+          ) : (
+            <pre className="max-h-64 overflow-auto rounded-lg bg-[var(--sf-bg)] p-3 font-mono text-[11px] leading-5 text-[var(--sf-text-muted)]">
               {versionScore}
             </pre>
-          </details>
-          <Button
-            className="mt-3"
-            variant="subtle"
-            onClick={() => {
-              setText(versionScore);
-              setSaved(false);
-            }}
-          >
-            Load into the editor
-          </Button>
+          )}
+          {/* Already shown in full above when the editor is empty. */}
+          {text.trim() && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-[11px] text-[var(--sf-text-faint)]">
+                Show the whole score
+              </summary>
+              <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-[var(--sf-bg)] p-3 font-mono text-[11px] leading-5 text-[var(--sf-text-muted)]">
+                {versionScore}
+              </pre>
+            </details>
+          )}
+          {/* The empty state above already offers this as its primary
+              action; two load buttons at once is one too many. */}
+          {text.trim() && (
+            <Button
+              className="mt-3"
+              variant="subtle"
+              onClick={() => {
+                setText(versionScore);
+                setSaved(false);
+              }}
+            >
+              Load into the editor
+            </Button>
+          )}
         </Card>
       )}
     </div>

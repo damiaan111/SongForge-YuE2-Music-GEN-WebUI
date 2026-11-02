@@ -139,9 +139,6 @@ export default function SettingsPage() {
       if (!candidate.model_path.trim()) {
         found.model_path = "Required for the YuE2 runner.";
       }
-      if (!candidate.command_template.trim()) {
-        found.command_template = "The template cannot be empty.";
-      }
     }
     return found;
   };
@@ -542,7 +539,7 @@ function HardwareSection({ value, set, errors }: SectionProps) {
             label="VRAM budget (GiB)"
             htmlFor={fieldId("settings", "memory_budget_gib")}
             error={errors.memory_budget_gib}
-            hint="Set this to your card's size, less a gigabyte for the desktop: 11 on a 12 GB card, 23 on a 24 GB one. YuE2 keeps 2 GiB in reserve and caps itself at budget minus 2, so a lower number only makes out-of-memory errors more likely. Setup fills this in from the card it detects."
+            hint="Set this to your card's size: 12 on a 12 GB card, 24 on a 24 GB one. YuE2 keeps 2 GiB in reserve and caps itself at the budget minus 2, so a lower number only makes out-of-memory errors more likely, and a higher one is harmless because YuE2 clamps to the card anyway. Setup fills this in from the card it detects."
           >
             <NumberInput
               id={fieldId("settings", "memory_budget_gib")}
@@ -657,11 +654,12 @@ function CommandSection({ value, set, errors, settings }: SectionProps) {
           label="Template"
           htmlFor={fieldId("settings", "command_template")}
           error={errors.command_template}
-          hint="Flags are checked against the yue2 CLI's own argument list; unknown flags are rejected on save."
+          hint="Leave this blank to use the built-in template, shown greyed out above. Flags are checked against the yue2 CLI's own argument list; unknown flags are rejected on save."
         >
           <Textarea
             id={fieldId("settings", "command_template")}
             value={value.command_template}
+            placeholder={settings.default_command_template}
             rows={6}
             spellCheck={false}
             aria-invalid={Boolean(errors.command_template)}

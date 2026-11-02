@@ -163,6 +163,22 @@ def test_no_overrides_means_no_override_flags(tmp_path: Path) -> None:
     assert not any(arg.startswith(("--request", "--config", "--resume")) for arg in argv)
 
 
+def test_a_blank_template_means_the_built_in_one(tmp_path: Path) -> None:
+    """Blank is what a fresh install ships, and it must build the same command.
+
+    The column defaults to "" and every consumer reads
+    ``command_template or DEFAULT_COMMAND_TEMPLATE``, so blank is the
+    supported way of saying "use the built-in template" - not a
+    half-configured state. The Settings form once rejected it as empty,
+    which left a fresh install unable to save any setting at all.
+    """
+    request = GenerationRequest(project_id="p", version_number=1, style_prompt="s", lyrics="l")
+    assert (
+        yue2_runner("").build_command(request, tmp_path)
+        == yue2_runner(DEFAULT_COMMAND_TEMPLATE).build_command(request, tmp_path)
+    )
+
+
 def test_template_without_override_placeholders_reports_no_support() -> None:
     legacy = DEFAULT_COMMAND_TEMPLATE.replace(
         " --request={request_file} --config={config_file}", ""
