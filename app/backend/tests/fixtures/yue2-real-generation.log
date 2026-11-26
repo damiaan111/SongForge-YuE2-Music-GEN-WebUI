@@ -1,0 +1,58 @@
+=== job 140f220f-8af1-4eef-9d7e-1592821ed55e started 2026-09-13T22:29:34.071799+00:00 ===
+$ 'C:\SongForge\runtime\venv-yue2\Scripts\yue2.exe' generate '--model=C:\SongForge\runtime\models\YuE2-3B' '--vae=C:\SongForge\runtime\models\YuE2-Vae' --device=cuda:0 --budget=11 --backend=torch-eager --quantization=none --offload-ar --offline '--output=C:\SongForge\runtime\projects\f8baa271-b2d1-4e97-be63-a9da8e6cf4ca\versions\v1\runs' --id=v1 '--style=warm indie pop, acoustic guitar, soft drums, gentle female vocal, sung in English' '--lyrics-file=C:\SongForge\runtime\projects\f8baa271-b2d1-4e97-be63-a9da8e6cf4ca\versions\v1\runs\lyrics.txt' --cot=full --stage=audio --seed=42 --cfg-scale=1.0
+[YuE2] Starting Resolving model files: elapsed 0.0s
+[YuE2] Completed Resolving model files: elapsed 0.0s
+[YuE2] Starting Verifying model files: elapsed 0.0s
+[YuE2] Running Verifying model files: elapsed 5.0s
+[YuE2] Running Verifying model files: elapsed 10.0s
+[YuE2] Running Verifying model files: elapsed 15.0s
+[YuE2] Completed Verifying model files: elapsed 16.4s
+[YuE2] Starting Loading model: elapsed 0.0s
+[YuE2] Running Loading model: elapsed 5.0s
+`torch_dtype` is deprecated! Use `dtype` instead!
+[YuE2] Running Loading model: elapsed 10.0s
+[YuE2] Running Loading model: elapsed 15.0s
+[YuE2] Running Loading model: elapsed 20.0s
+[YuE2] Completed Loading model: elapsed 23.2s
+[YuE2] Starting Planning score: 0 tokens | 0.0 tokens/s | elapsed 0.0s
+[YuE2] Running Planning score: 53 tokens | 10.6 tokens/s | elapsed 5.0s
+[YuE2] Running Planning score: 132 tokens | 13.2 tokens/s | elapsed 10.0s
+[YuE2] Running Planning score: 214 tokens | 14.3 tokens/s | elapsed 15.0s
+[YuE2] Running Planning score: 295 tokens | 14.7 tokens/s | elapsed 20.0s
+[YuE2] Running Planning score: 376 tokens | 15.0 tokens/s | elapsed 25.1s
+[YuE2] Running Planning score: 458 tokens | 15.2 tokens/s | elapsed 30.1s
+[YuE2] Completed Planning score: 525 tokens | 15.4 tokens/s | elapsed 34.1s
+[YuE2] Starting Generating song: 0 tokens | 0.0 tokens/s | elapsed 0.0s
+[YuE2] Running Generating song: 81 tokens | 16.2 tokens/s | elapsed 5.0s
+[YuE2] Running Generating song: 163 tokens | 16.3 tokens/s | elapsed 10.0s
+[YuE2] Running Generating song: 246 tokens | 16.4 tokens/s | elapsed 15.0s
+[YuE2] Running Generating song: 330 tokens | 16.5 tokens/s | elapsed 20.0s
+[YuE2] Running Generating song: 414 tokens | 16.5 tokens/s | elapsed 25.0s
+[YuE2] Running Generating song: 497 tokens | 16.5 tokens/s | elapsed 30.0s
+[YuE2] Running Generating song: 581 tokens | 16.6 tokens/s | elapsed 35.0s
+[YuE2] Running Generating song: 663 tokens | 16.6 tokens/s | elapsed 40.0s
+[YuE2] Running Generating song: 739 tokens | 16.4 tokens/s | elapsed 45.0s
+[YuE2] Running Generating song: 822 tokens | 16.4 tokens/s | elapsed 50.1s
+[YuE2] Running Generating song: 906 tokens | 16.5 tokens/s | elapsed 55.1s
+[YuE2] Running Generating song: 991 tokens | 16.5 tokens/s | elapsed 60.1s
+[YuE2] Running Generating song: 1076 tokens | 16.5 tokens/s | elapsed 65.1s
+[YuE2] Completed Generating song: 1105 tokens | 16.6 tokens/s | elapsed 66.7s
+[YuE2] Starting Synthesizing audio: 0 steps | elapsed 0.0s
+[YuE2] Running Synthesizing audio: 3/32 steps (9%) | elapsed 5.0s
+[YuE2] Running Synthesizing audio: 9/32 steps (28%) | elapsed 10.0s
+[YuE2] Running Synthesizing audio: 15/32 steps (47%) | elapsed 15.0s
+[YuE2] Running Synthesizing audio: 20/32 steps (62%) | elapsed 20.0s
+[YuE2] Running Synthesizing audio: 26/32 steps (81%) | elapsed 25.0s
+[YuE2] Running Synthesizing audio: 32/32 steps (100%) | elapsed 30.0s
+[YuE2] Completed Synthesizing audio: 32/32 steps (100%) | elapsed 31.0s
+[YuE2] Starting Loading audio decoder: elapsed 0.0s
+C:\SongForge\runtime\venv-yue2\Lib\site-packages\torch\nn\utils\weight_norm.py:144: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.
+  WeightNorm.apply(module, name, dim)
+[YuE2] Running Loading audio decoder: elapsed 5.0s
+[YuE2] Completed Loading audio decoder: elapsed 5.1s
+[YuE2] Starting Decoding audio: 0/3 chunks (0%) | elapsed 0.0s
+[YuE2] Completed Decoding audio: 3/3 chunks (100%) | elapsed 2.6s
+[YuE2] Completed: 44.2s audio in 162.8s
+{"status": "complete", "output": "C:\\SongForge\\runtime\\projects\\f8baa271-b2d1-4e97-be63-a9da8e6cf4ca\\versions\\v1\\runs\\v1", "truncated": {"abc": false, "semantic": false}, "seconds": 162.84437259999686}
+[completed] exit code 0
+=== completed ===

@@ -1,0 +1,40 @@
+# The exact versions SongForge's test suite last passed on.
+#
+# pyproject.toml declares ranges, because that is what a library should do.
+# Setup installs with `pip install -c constraints.txt`, because an application
+# should not: without this file every fresh install resolves to whatever was
+# published that morning, and a release upstream can break setup for every new
+# user without a single change in this repository.
+#
+# A constraint only applies to a package that is actually being installed, so
+# platform-specific dependencies that are absent here (uvloop on Linux and
+# macOS) are simply left to pip. certifi is deliberately not pinned: it is a
+# bundle of root certificates, and an old one is a liability, not a guarantee.
+#
+# To refresh: install into a clean environment without -c, run the tests, then
+#   pip freeze --exclude-editable
+# and replace the list below.
+annotated-doc==0.0.7
+annotated-types==0.8.0
+anyio==4.16.0
+click==8.5.1
+fastapi==0.165.0
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.9.0
+httpx==0.29.0
+idna==3.20
+opentelemetry-api==1.45.2
+pydantic==2.14.4
+pydantic-settings==2.16.3
+pydantic_core==2.50.5
+python-dotenv==1.2.4
+PyYAML==6.0.4
+SQLAlchemy==2.1.9
+sqlmodel==0.0.50
+starlette==1.10.0
+typing-inspection==0.4.5
+typing_extensions==4.16.0
+uvicorn==0.54.0
+watchfiles==1.3.0
+websockets==17.4

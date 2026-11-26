@@ -1,0 +1,353 @@
+name: CI
+
+# Everything here runs without a GPU. The backend's end-to-end paths use the
+# mock runner, so the whole suite - queue, persistence, migrations, lyrics
+# parsing, the budget estimator, setup's hardware detection - is testable on a
+# plain CI box. That is why this is cheap enough to run on every push.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is the platform most people run this on; Ubuntu catches the
+        # path separator and case sensitivity mistakes that Windows hides;
+        # macos-latest is Apple Silicon, the only runner on which the sysctl
+        # probe and the arm64 check run against real hardware.
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # With the constraints file, so the suite runs on the exact versions a
+      # user's install gets rather than on whatever was published today.
+      - name: Install
+        run: python -m pip install -c app/backend/constraints.txt -e "app/backend[test]"
+
+      # The FLAC master is transcoded from the runner's WAV by FFmpeg, so
+      # four tests skip without it. Installing it on one runner means that
+      # path is actually covered; doing it on all three would add minutes
+      # (Homebrew builds it) to test a transcode that is not
+      # platform-specific. Ubuntu is the cheap one, so it is the one.
+      - name: FFmpeg, so the FLAC path is exercised
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Test
+        working-directory: app/backend
+        run: python -m pytest -q -rs
+
+  backend-newest:
+    name: Backend on the newest allowed dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # No constraints, on the newest supported Python: this is the install a
+      # user falls back to when a pinned wheel is not published for their
+      # platform. It is allowed to fail without blocking a merge - its job is
+      # to say "time to refresh constraints.txt" before a user finds out.
+      - name: Install without constraints
+        run: python -m pip install -e "app/backend[test]"
+
+      - name: Test
+        working-directory: app/backend
+        continue-on-error: true
+        run: python -m pytest -q
+
+  setup-detection:
+    name: Setup runs with nothing installed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The point of this job: setup must work on a machine where SongForge
+      # has never been installed and no dependency is available, because that
+      # is the only state a new user is ever in. No pip install step here, on
+      # purpose - songforge.setup is standard library only and this job is
+      # what keeps it that way.
+      - name: Detect hardware with no dependencies at all
+        run: python app/backend/songforge/setup/__main__.py --detect
+
+      - name: Dry-run an install
+        run: python app/backend/songforge/setup/__main__.py --only=backend --dry-run
+
+      - name: Dry-run the unattended install, with and without the lyrics writer
+        run: |
+          python app/backend/songforge/setup/__main__.py --yes --dry-run
+          python app/backend/songforge/setup/__main__.py --yes --with-lyrics --dry-run
+
+      - name: An unknown component is an error
+        run: |
+          if python app/backend/songforge/setup/__main__.py --only=nonsense --dry-run; then
+            echo "an unknown component name was accepted" >&2
+            exit 1
+          fi
+
+  setup-detection-macos:
+    name: Setup detects Apple Silicon
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The sysctl probe and the arm64 guard cannot be tested anywhere else:
+      # a test can fake a Machine, but not hw.memsize. This asserts the real
+      # detection reaches the Apple branch and chooses the Metal wheel, so a
+      # change that silently drops to the CPU target fails here.
+      - name: Detect, and insist it found Metal
+        run: |
+          python app/backend/songforge/setup/__main__.py --detect | tee detected.json
+          python - <<'CHECK'
+          import json
+          d = json.load(open("detected.json"))
+          assert d["gpu"]["vendor"] == "apple", d["gpu"]
+          assert d["torch"]["index_url"] is None, d["torch"]
+          assert d["settings"]["quantization"] == "none", d["settings"]
+          assert d["settings"]["memory_budget_gib"] > 0, d["settings"]
+          assert any("VAE decoder" in w for w in d["warnings"]), d["warnings"]
+          print("detected:", d["gpu"]["name"], d["settings"]["memory_budget_gib"], "GiB")
+          CHECK
+
+      - name: The launch scripts must be LF and executable
+        run: |
+          for f in setup.sh start.sh scripts/start-songforge.sh scripts/stop-songforge.sh; do
+            test -x "$f" || { echo "$f is not executable"; exit 1; }
+            bash -n "$f"
+            ! grep -q $'\r' "$f" || { echo "$f has CRLF line endings"; exit 1; }
+          done
+
+  runtime-deps:
+    name: The app runs on its declared dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The backend job installs app/backend[test]; setup installs app/backend
+      # with no extras. Those are different dependency sets, and the
+      # difference hid a real failure: httpx was declared only under [test]
+      # while lyrics.py imports it at module scope, so every CI run passed
+      # while a fresh install could not import songforge.main at all.
+      #
+      # This job installs exactly what a new user gets, then runs the same
+      # import probe setup uses to decide the backend is present. No tests -
+      # the point is the dependency set, and pytest would drag in the extra.
+      - name: Install with no extras, as setup does
+        run: python -m pip install -c app/backend/constraints.txt ./app/backend
+
+      - name: Import the app the way setup probes it
+        working-directory: app/backend
+        run: python -I -c "import songforge.main"
+
+  # The real thing, start to finish, on every platform SongForge claims: the
+  # launcher a user double-clicks installs the app, the start script brings it
+  # up in the foreground, the web app answers through its proxy, and stopping
+  # the terminal stops everything it started. Only the model itself is left
+  # out - there is no GPU here - so the app comes up on the simulation engine.
+  install-and-start:
+    name: Install and start (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install the app with the launcher (macOS, Linux)
+        if: runner.os != 'Windows'
+        run: ./setup.sh --only=backend,frontend
+
+      - name: Start it, use it, stop it (macOS, Linux)
+        if: runner.os != 'Windows'
+        run: |
+          ./start.sh --no-browser > start.log 2>&1 &
+          launcher=$!
+          up=0
+          for _ in $(seq 1 90); do
+            if curl -fsS --max-time 3 http://127.0.0.1:3333/api/health > health.json 2>/dev/null; then
+              up=1; break
+            fi
+            kill -0 "$launcher" 2>/dev/null || break
+            sleep 2
+          done
+          cat start.log
+          [ "$up" -eq 1 ] || { echo "SongForge never answered" >&2; exit 1; }
+          cat health.json; echo
+          curl -fsS http://127.0.0.1:3333/ -o home.html && grep -q "SongForge" home.html
+          curl -fsS http://127.0.0.1:3333/create -o create.html && grep -q "Skip to content" create.html
+          # The banner follows the first successful answer by up to a second.
+          for _ in $(seq 1 20); do
+            grep -q "SongForge is running" start.log && break
+            sleep 1
+          done
+          cat start.log
+          grep -q "SongForge is running" start.log
+          grep -q "http://localhost:3333" start.log
+          # A second copy must refuse, and must leave the first one alone.
+          if ./start.sh --no-browser; then echo "a second copy was allowed to start" >&2; exit 1; fi
+          curl -fsS --max-time 3 http://127.0.0.1:3333/api/health > /dev/null
+          # TERM is what closing the terminal delivers (as HUP) and what
+          # Ctrl+C becomes in the script's own traps.
+          kill -TERM "$launcher"
+          wait "$launcher" || true
+          sleep 2
+          if curl -fsS --max-time 2 http://127.0.0.1:3334/api/health > /dev/null 2>&1; then
+            echo "the engine outlived the terminal" >&2; exit 1
+          fi
+          if curl -fsS --max-time 2 http://127.0.0.1:3333/ > /dev/null 2>&1; then
+            echo "the web app outlived the terminal" >&2; exit 1
+          fi
+          echo "stopped cleanly"
+
+      - name: Install the app with the launcher (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: setup.bat --only=backend,frontend
+
+      - name: The flags the README shows reach setup (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $detected = powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 --detect | Out-String
+          if ($detected -notmatch '"system":\s*"Windows"') { throw "setup.ps1 --detect did not run detection:`n$detected" }
+          $dry = powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 --only=backend,frontend --dry-run | Out-String
+          if ($dry -notmatch 'already installed') { throw "--only=backend,frontend was not forwarded:`n$dry" }
+
+      - name: Start it, use it, close the window (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $launcher = Start-Process powershell.exe -PassThru -WindowStyle Hidden `
+            -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','scripts\Start-SongForge.ps1','-NoBrowser' `
+            -RedirectStandardOutput start.log -RedirectStandardError start.err
+          $up = $false
+          foreach ($attempt in 1..90) {
+            try {
+              $health = Invoke-RestMethod -Uri http://127.0.0.1:3333/api/health -TimeoutSec 3
+              $up = $true; break
+            } catch { }
+            if ($launcher.HasExited) { break }
+            Start-Sleep -Seconds 2
+          }
+          Get-Content start.log, start.err -ErrorAction SilentlyContinue
+          if (-not $up) { throw 'SongForge never answered' }
+          $health | ConvertTo-Json -Compress
+          $home_page = (Invoke-WebRequest -Uri http://127.0.0.1:3333/ -UseBasicParsing).Content
+          if ($home_page -notmatch 'SongForge') { throw 'the home page did not render' }
+          # The banner follows the first successful answer by up to a second.
+          foreach ($attempt in 1..20) {
+            if (Select-String -Path start.log -Pattern 'SongForge is running' -Quiet) { break }
+            Start-Sleep -Seconds 1
+          }
+          if (-not (Select-String -Path start.log -Pattern 'SongForge is running' -Quiet)) { throw 'no banner' }
+          # Killing the launcher outright is what clicking the window's X does.
+          # The job object must take the engine and the web app with it.
+          Stop-Process -Id $launcher.Id -Force
+          Start-Sleep -Seconds 4
+          foreach ($port in 3333, 3334) {
+            if (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue) {
+              throw "port $port is still being served after the window was closed"
+            }
+          }
+          'stopped cleanly'
+
+  # Known advisories in what a user's install actually contains. Informational:
+  # a new advisory upstream should be seen on the next push, not block an
+  # unrelated fix from merging.
+  advisories:
+    name: Known vulnerabilities in dependencies
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Web app (what is shipped, not the build tools)
+        working-directory: app/frontend
+        run: npm audit --omit=dev --audit-level=high
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Backend (the pinned versions setup installs)
+        run: |
+          python -m pip install --quiet pip-audit
+          pip-audit --requirement app/backend/constraints.txt --no-deps --disable-pip
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint src
+
+      - name: Build
+        run: npx next build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Smoke test every route
+        run: node scripts/smoke.mjs

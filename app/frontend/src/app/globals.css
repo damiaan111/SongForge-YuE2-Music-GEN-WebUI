@@ -1,0 +1,489 @@
+@import "tailwindcss";
+
+/*
+ * SongForge visual language - "ember studio".
+ *
+ * Dark-first: a deep, slightly cool charcoal ground so the warm ember accent
+ * reads as the one hot thing on screen, the way a meter or a tube does in a
+ * studio rack. Everything is a CSS variable on :root and reaches Tailwind
+ * through the @theme bridge, so a component never names a raw colour.
+ *
+ * Three rules keep it consistent:
+ *   1. Surfaces step up in lightness (ground < raised < overlay < elevated);
+ *      depth comes from that step plus a hairline, not from heavy shadows.
+ *   2. Text has three weights of presence (text, muted, faint) and nothing is
+ *      set smaller than 12px - explanations people need are not fine print.
+ *   3. The accent means "this makes sound or starts work". It is not decoration.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --sf-bg: oklch(0.15 0.008 275);
+  --sf-bg-sunken: oklch(0.125 0.008 275);
+  --sf-bg-raised: oklch(0.185 0.01 275);
+  --sf-bg-overlay: oklch(0.225 0.012 275);
+  --sf-bg-elevated: oklch(0.255 0.014 275);
+  /* Where you type. Darker than its card in the dark theme, so a field reads
+     as a well; white in the light theme, where a grey well reads as disabled. */
+  --sf-bg-field: var(--sf-bg-sunken);
+  --sf-border: oklch(0.275 0.012 275);
+  --sf-border-strong: oklch(0.37 0.016 275);
+
+  --sf-text: oklch(0.96 0.004 275);
+  --sf-text-muted: oklch(0.76 0.012 275);
+  --sf-text-faint: oklch(0.62 0.014 275);
+
+  --sf-accent: oklch(0.8 0.155 68);
+  --sf-accent-strong: oklch(0.86 0.15 74);
+  --sf-accent-deep: oklch(0.68 0.19 42);
+  --sf-accent-ink: oklch(0.19 0.04 60);
+  --sf-accent-soft: color-mix(in oklab, var(--sf-accent) 14%, transparent);
+
+  --sf-success: oklch(0.78 0.15 158);
+  --sf-warning: oklch(0.83 0.14 88);
+  --sf-danger: oklch(0.7 0.19 24);
+  --sf-info: oklch(0.76 0.11 236);
+
+  --sf-radius: 0.875rem;
+  --sf-radius-control: 0.625rem;
+
+  --sf-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
+  --sf-shadow-md: 0 8px 24px -8px oklch(0 0 0 / 0.5), 0 2px 6px oklch(0 0 0 / 0.25);
+  --sf-shadow-lg: 0 24px 60px -16px oklch(0 0 0 / 0.65), 0 6px 16px oklch(0 0 0 / 0.3);
+  --sf-glow: 0 0 0 1px color-mix(in oklab, var(--sf-accent) 35%, transparent),
+    0 8px 28px -8px color-mix(in oklab, var(--sf-accent-deep) 55%, transparent);
+  --sf-highlight: inset 0 1px 0 oklch(1 0 0 / 0.045);
+
+  --sf-ember: linear-gradient(135deg, var(--sf-accent-strong) 0%, var(--sf-accent) 45%, var(--sf-accent-deep) 100%);
+
+  /* Layout constants shared by the shell and anything docked against it. */
+  --sf-sidebar: 16.5rem;
+  --sf-sidebar-collapsed: 4.5rem;
+  --sf-dock: 0px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --sf-bg: oklch(0.975 0.004 80);
+  --sf-bg-sunken: oklch(0.955 0.005 80);
+  --sf-bg-raised: oklch(1 0 0);
+  --sf-bg-overlay: oklch(0.955 0.006 80);
+  --sf-bg-elevated: oklch(1 0 0);
+  --sf-bg-field: oklch(1 0 0);
+  --sf-border: oklch(0.885 0.008 80);
+  --sf-border-strong: oklch(0.8 0.012 80);
+
+  --sf-text: oklch(0.22 0.014 275);
+  --sf-text-muted: oklch(0.42 0.014 275);
+  --sf-text-faint: oklch(0.54 0.012 275);
+
+  --sf-accent: oklch(0.64 0.165 52);
+  --sf-accent-strong: oklch(0.7 0.16 58);
+  --sf-accent-deep: oklch(0.56 0.19 38);
+  --sf-accent-ink: oklch(0.99 0.01 80);
+
+  --sf-success: oklch(0.52 0.14 158);
+  --sf-warning: oklch(0.58 0.13 75);
+  --sf-danger: oklch(0.54 0.2 24);
+  --sf-info: oklch(0.52 0.13 240);
+
+  --sf-shadow-sm: 0 1px 2px oklch(0.2 0.02 275 / 0.08);
+  --sf-shadow-md: 0 8px 24px -10px oklch(0.2 0.02 275 / 0.18), 0 2px 6px oklch(0.2 0.02 275 / 0.06);
+  --sf-shadow-lg: 0 24px 60px -18px oklch(0.2 0.02 275 / 0.28), 0 6px 16px oklch(0.2 0.02 275 / 0.08);
+  --sf-highlight: inset 0 1px 0 oklch(1 0 0 / 0.6);
+}
+
+@theme inline {
+  --color-ground: var(--sf-bg);
+  --color-sunken: var(--sf-bg-sunken);
+  --color-raised: var(--sf-bg-raised);
+  --color-overlay: var(--sf-bg-overlay);
+  --color-elevated: var(--sf-bg-elevated);
+  --color-field: var(--sf-bg-field);
+  --color-edge: var(--sf-border);
+  --color-edge-strong: var(--sf-border-strong);
+  --color-ink: var(--sf-text);
+  --color-ink-muted: var(--sf-text-muted);
+  --color-ink-faint: var(--sf-text-faint);
+  --color-accent: var(--sf-accent);
+  --color-accent-strong: var(--sf-accent-strong);
+  --color-accent-deep: var(--sf-accent-deep);
+  --color-accent-ink: var(--sf-accent-ink);
+  --color-success: var(--sf-success);
+  --color-warning: var(--sf-warning);
+  --color-danger: var(--sf-danger);
+  --color-info: var(--sf-info);
+  --radius-sf: var(--sf-radius);
+  --radius-control: var(--sf-radius-control);
+
+  /* Bundled with the app (fontsource), so a fresh install never reaches for a
+     font CDN at build time or at run time. The system stack is the fallback
+     while they load and on the day a file goes missing. */
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Geist Variable",
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Code",
+    "SF Mono", Menlo, Consolas, monospace;
+}
+
+html {
+  /* Reserve the scrollbar so pages of different height do not shift sideways
+     when you move between them. */
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+  /* Everything is sized in rem, so this one line is the app's zoom. It stays
+     at the browser default up to a 1600px window and then grows gently to
+     18px on very wide monitors, where 16px type reads as small print. A
+     percentage-free clamp would ignore the reader's own font-size setting;
+     this one is anchored to it. */
+  font-size: clamp(100%, calc(80% + 0.2vw), 112.5%);
+}
+
+body {
+  background-color: var(--sf-bg);
+  color: var(--sf-text);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-wrap: break-word;
+  font-feature-settings: "ss01", "cv11";
+}
+
+/* A faint ember wash behind the page: enough that the ground is not a flat
+   fill, never enough to compete with content. Fixed, so it does not scroll. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 32rem at 12% -8%, color-mix(in oklab, var(--sf-accent-deep) 9%, transparent), transparent 70%),
+    radial-gradient(48rem 28rem at 100% 0%, color-mix(in oklab, var(--sf-info) 5%, transparent), transparent 70%);
+}
+
+h1, h2, h3, .sf-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--sf-accent) 35%, transparent);
+}
+
+/* Visible focus for keyboard users, suppressed for pointer interaction. */
+:focus-visible {
+  outline: 2px solid var(--sf-accent);
+  outline-offset: 2px;
+  border-radius: 0.4rem;
+}
+
+/* The ring above is drawn two pixels outside the control, so any container
+   that clips - a segmented toggle with rounded corners, a drop-down menu, a
+   tab strip that scrolls sideways - cuts it off, and the focused button looks
+   like it is breaking out of its box. (overflow-x: auto also forces
+   overflow-y to auto, which is why a scrolling strip clips top and bottom.)
+   These controls draw the ring just inside themselves instead: the whole ring
+   stays visible and the clipping the layout needs is kept. */
+.sf-focus-inset:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Scrollbars that match the surface rather than the OS default. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sf-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--sf-border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* ------------------------------------------------------------ form controls */
+
+/* Native <select>, restyled: the platform menu is kept because it is the one
+   drop-down that works with every keyboard, screen reader and phone, but the
+   closed control should look like it belongs here. */
+.sf-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9cab' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  padding-right: 2.25rem;
+}
+.sf-select option {
+  background-color: var(--sf-bg-raised);
+  color: var(--sf-text);
+}
+
+/* Range inputs: one track-and-thumb look everywhere (volume, lyric length). */
+.sf-range {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 1.25rem;
+  background: transparent;
+  cursor: pointer;
+}
+.sf-range::-webkit-slider-runnable-track {
+  height: 0.3rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--sf-accent) 0 var(--sf-range-fill, 50%),
+    var(--sf-bg-elevated) var(--sf-range-fill, 50%) 100%
+  );
+}
+.sf-range::-moz-range-track {
+  height: 0.3rem;
+  border-radius: 999px;
+  background: var(--sf-bg-elevated);
+}
+.sf-range::-moz-range-progress {
+  height: 0.3rem;
+  border-radius: 999px;
+  background: var(--sf-accent);
+}
+.sf-range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  margin-top: -0.35rem;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 999px;
+  background: var(--sf-text);
+  border: 2px solid var(--sf-bg);
+  box-shadow: 0 1px 4px oklch(0 0 0 / 0.5);
+  transition: transform 120ms ease;
+}
+.sf-range::-moz-range-thumb {
+  height: 0.8rem;
+  width: 0.8rem;
+  border-radius: 999px;
+  background: var(--sf-text);
+  border: 2px solid var(--sf-bg);
+  box-shadow: 0 1px 4px oklch(0 0 0 / 0.5);
+}
+.sf-range:hover::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+.sf-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Checkboxes drawn to match the toggles rather than the OS. */
+.sf-check {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  height: 1.05rem;
+  width: 1.05rem;
+  border-radius: 0.3rem;
+  border: 1.5px solid var(--sf-border-strong);
+  background: var(--sf-bg-sunken);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.sf-check::after {
+  content: "";
+  height: 0.55rem;
+  width: 0.55rem;
+  transform: scale(0);
+  transition: transform 120ms ease;
+  background: var(--sf-accent-ink);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+.sf-check:checked {
+  background: var(--sf-accent);
+  border-color: var(--sf-accent);
+}
+.sf-check:checked::after {
+  transform: scale(1);
+}
+.sf-check:hover {
+  border-color: var(--sf-accent);
+}
+
+/* Prose inside cards: details/summary get a real disclosure affordance. */
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+.sf-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+.sf-disclosure > summary::before {
+  content: "";
+  flex: none;
+  height: 0.5rem;
+  width: 0.5rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 160ms ease;
+  opacity: 0.7;
+}
+.sf-disclosure[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+/* --------------------------------------------------------------- utilities */
+
+.sf-card {
+  border: 1px solid var(--sf-border);
+  background: var(--sf-bg-raised);
+  border-radius: var(--sf-radius);
+  box-shadow: var(--sf-highlight), var(--sf-shadow-sm);
+}
+
+.sf-ember {
+  background-image: var(--sf-ember);
+  color: var(--sf-accent-ink);
+}
+.sf-ember-text {
+  background-image: var(--sf-ember);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Glass bars that float over scrolling content (player dock, sticky actions). */
+.sf-glass {
+  background: color-mix(in oklab, var(--sf-bg-raised) 86%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
+
+/* Horizontal scrollers hide their bar; the fade at the edge says "more". */
+.sf-scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sf-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes sf-pulse-ring {
+  0% { opacity: 0.55; transform: scale(0.96); }
+  70% { opacity: 0; transform: scale(1.35); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+.sf-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--sf-accent);
+  animation: sf-pulse-ring 1.8s ease-out infinite;
+}
+
+@keyframes sf-shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+.sf-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--sf-bg-raised) 0%,
+    var(--sf-bg-elevated) 50%,
+    var(--sf-bg-raised) 100%
+  );
+  background-size: 200% 100%;
+  animation: sf-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Indeterminate progress: a lit segment travelling along the track, for the
+   stages where the runner gives no percentage. Motion without a false number. */
+@keyframes sf-travel {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+.sf-indeterminate {
+  position: relative;
+  overflow: hidden;
+}
+.sf-indeterminate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 30%;
+  border-radius: inherit;
+  background: var(--sf-ember);
+  animation: sf-travel 1.6s ease-in-out infinite;
+}
+
+/* The equaliser glyph that marks the track currently playing. */
+@keyframes sf-eq {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+.sf-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 0.85rem;
+}
+.sf-eq > span {
+  width: 3px;
+  height: 100%;
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: bottom;
+  animation: sf-eq 0.9s ease-in-out infinite;
+}
+.sf-eq > span:nth-child(2) { animation-delay: -0.3s; }
+.sf-eq > span:nth-child(3) { animation-delay: -0.6s; }
+.sf-eq[data-paused="true"] > span {
+  animation-play-state: paused;
+}
+
+@keyframes sf-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.sf-rise {
+  animation: sf-rise 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes sf-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.sf-pop {
+  animation: sf-pop 180ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
