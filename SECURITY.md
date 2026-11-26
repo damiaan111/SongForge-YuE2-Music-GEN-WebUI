@@ -57,9 +57,9 @@ directory. Deleting that folder removes it.
 - `setup.bat` and `start.bat` run PowerShell with the execution policy relaxed
   **for that one process**. The system-wide policy is not changed.
 - Nothing is registered to start with your computer, no service is installed
-  and no firewall rule is created. `scripts/Install-StartupTask.ps1` and
-  `scripts/Create-DesktopShortcut.ps1` exist for people who want those; they
-  do nothing unless you run them.
+  and no firewall rule is created. `scripts/Create-DesktopShortcut.ps1` puts a
+  shortcut to `start.bat` on your desktop if you run it; nothing else is
+  added to your system.
 - Setup installs software from outside this repository only when you tick it,
   and for Ollama and FFmpeg only through a package manager you already have
   (`winget`, Homebrew) and only after asking.

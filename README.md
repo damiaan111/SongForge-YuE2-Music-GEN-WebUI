@@ -86,10 +86,11 @@ background.
 - **Reproducibility** — every version records its seed, planning mode, guidance
   scale, sampling overrides, model and decoder checksums, and the exact command
   line. **Reuse this take** in Versions puts all of it back into the editor.
-- **Several takes per Generate** — two by default, up to 8, each with its own seed,
-  compared side by side. Best-of-two is YuE2's own published baseline, so a
-  single take is the model at its worst rather than its average. They run one
-  after another; budget about 3–4 minutes each on an RTX 3060.
+- **Several takes per Generate** — one by default, up to 8, each with its own seed,
+  compared side by side. Best-of-two is YuE2's own published baseline, so for a
+  song you care about two or more takes are worth the wait. They run one after
+  another; on an RTX 3060 each takes roughly three and a half times the length
+  of the song.
 - **Sampling controls** — score and audio sampling (temperature, top-p, top-k,
   repetition penalty, token limits) and synthesis steps, with YuE2's defaults
   shown in every blank field.
@@ -266,7 +267,8 @@ Double-click **`start.bat`** on Windows, or run `./start.sh` on macOS and Linux.
 | Another port | `start.bat -Port 8080` | `PORT=8080 ./start.sh` |
 | Another engine port (if 3334 is taken) | `start.bat -BackendPort 3344` | `BACKEND_PORT=3344 ./start.sh` |
 
-A desktop shortcut on Windows: `.\scripts\Create-DesktopShortcut.ps1`.
+A desktop shortcut on Windows: `.\scripts\Create-DesktopShortcut.ps1` (undo it
+with `-Remove`). It opens the same terminal window `start.bat` does.
 
 ---
 

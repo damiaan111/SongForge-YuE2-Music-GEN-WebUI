@@ -1,17 +1,14 @@
 "use client";
 
 /**
- * Settings, plus the first-run wizard.
+ * Settings.
  *
- * The wizard is the same set of sections the full page shows, walked one step
- * at a time, so there is only one implementation of each control. Nothing here
- * executes a command: the runner is configured, previewed and tested through
- * the settings and diagnostics endpoints only.
+ * Nothing here executes a command: the engine is configured, previewed and
+ * tested through the settings and diagnostics endpoints only. First-time
+ * configuration is the job of setup, not of this page.
  */
 import * as React from "react";
 import {
-  ArrowLeft,
-  ArrowRight,
   Check,
   ClipboardCopy,
   Cpu,
@@ -28,7 +25,6 @@ import {
   Save,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
   Sun,
   Terminal,
   Wrench,
@@ -88,25 +84,11 @@ const SECTIONS = [
   { id: "advanced", label: "Advanced", icon: Wrench },
 ] as const;
 
-const WIZARD_STEPS = [
-  "Storage",
-  "Runner",
-  "Model & GPU",
-  "Command",
-  "Test",
-  "Access",
-] as const;
-
 export default function SettingsPage() {
   const { settings, refreshSettings, refreshHealth, notify } = useStore();
   const [edits, setEdits] = React.useState<SettingsUpdate>({});
   const [saving, setSaving] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [wizardStep, setWizardStep] = React.useState(0);
-  // null = follow the server's wizard_completed flag; true/false = the user
-  // opened or dismissed it in this session. Derived rather than seeded in an
-  // effect, so the full page never flashes before the wizard takes over.
-  const [wizardChoice, setWizardChoice] = React.useState<boolean | null>(null);
   const [diagnostics, setDiagnostics] = React.useState<Diagnostics | null>(null);
   const [testing, setTesting] = React.useState(false);
 
@@ -120,15 +102,6 @@ export default function SettingsPage() {
     );
   }
 
-  // Setup already did the wizard's job when it detected the hardware, wrote
-  // the paths and left no configuration issues. Opening a six-step "point
-  // SongForge at your model" flow at someone who just watched an installer do
-  // exactly that reads as though the install failed.
-  const configuredBySetup =
-    settings.hardware !== null &&
-    settings.runner_kind !== "mock" &&
-    settings.configuration_issues.length === 0;
-  const wizardOpen = wizardChoice ?? (!settings.wizard_completed && !configuredBySetup);
   const value: Settings = { ...settings, ...edits };
   const dirty = Object.keys(edits).length > 0;
 
@@ -221,101 +194,6 @@ export default function SettingsPage() {
 
   const sectionProps = { value, set, errors, settings };
 
-  // ------------------------------------------------------------------ wizard
-  if (wizardOpen) {
-    const last = wizardStep === WIZARD_STEPS.length - 1;
-    const finish = async () => {
-      const ok = await save({ wizard_completed: true });
-      if (ok) setWizardChoice(false);
-    };
-
-    return (
-      <div className="mx-auto max-w-3xl">
-        <PageHeader
-          eyebrow="Manual setup"
-          title="Point SongForge at your model"
-          description="Six short steps. Nothing runs on your GPU until you press Test, and you can leave at any point — everything here is editable later."
-        />
-
-        <ol className="mb-6 flex flex-wrap gap-1.5" aria-label="Setup progress">
-          {WIZARD_STEPS.map((label, index) => (
-            <li key={label}>
-              <button
-                type="button"
-                onClick={() => setWizardStep(index)}
-                aria-current={index === wizardStep ? "step" : undefined}
-                className={cn(
-                  "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition-colors",
-                  index === wizardStep
-                    ? "border-accent/60 bg-accent/14 text-accent"
-                    : index < wizardStep
-                      ? "border-edge bg-overlay text-ink"
-                      : "border-edge text-ink-faint hover:text-ink-muted",
-                )}
-              >
-                <span className="font-mono text-xs tabular-nums opacity-70">{index + 1}</span>
-                {label}
-              </button>
-            </li>
-          ))}
-        </ol>
-
-        <div className="space-y-5">
-          {wizardStep === 0 && <StorageSection settings={settings} />}
-          {wizardStep === 1 && <RunnerSection {...sectionProps} />}
-          {wizardStep === 2 && <HardwareSection {...sectionProps} />}
-          {wizardStep === 3 && <CommandSection {...sectionProps} />}
-          {wizardStep === 4 && (
-            <DiagnosticsSection
-              diagnostics={diagnostics}
-              testing={testing}
-              onRun={runDiagnostics}
-              dirty={dirty}
-              onSave={() => save()}
-            />
-          )}
-          {wizardStep === 5 && <AccessSection shared={settings.lan_mode} />}
-        </div>
-
-        <div className="mt-6 flex flex-wrap items-center gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => setWizardStep((step) => Math.max(0, step - 1))}
-            disabled={wizardStep === 0}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Back
-          </Button>
-          {last ? (
-            <Button variant="primary" loading={saving} onClick={finish}>
-              <Check className="h-4 w-4" aria-hidden="true" />
-              Finish setup
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              loading={saving}
-              onClick={async () => {
-                if (dirty && !(await save())) return;
-                setWizardStep((step) => step + 1);
-              }}
-            >
-              Next
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            className="ml-auto"
-            onClick={() => setWizardChoice(false)}
-          >
-            Skip to full settings
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   // ----------------------------------------------------------- full settings
   const changes = Object.keys(edits).length;
   return (
@@ -323,21 +201,6 @@ export default function SettingsPage() {
       <PageHeader
         title="Settings"
         description="How songs are made on this computer, what a new song starts with, and how the app looks."
-        actions={
-          settings.runner_kind !== "mock" && !configuredBySetup ? (
-            <Button
-              variant="subtle"
-              size="sm"
-              onClick={() => {
-                setWizardStep(0);
-                setWizardChoice(true);
-              }}
-            >
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
-              Guided setup
-            </Button>
-          ) : undefined
-        }
       />
 
       {settings.configuration_issues.length > 0 && (

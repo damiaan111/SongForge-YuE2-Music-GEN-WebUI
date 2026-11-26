@@ -69,8 +69,6 @@ const SOURCES: [string, string][] = [
   ["YuE2 repository", "https://github.com/multimodal-art-projection/YuE"],
   ["YuE2 project page", "https://map-yue2.github.io/"],
   ["ComfyUI YuE2 tutorial - token budgets and modes", "https://docs.comfy.org/tutorials/audio/yue2/yue2"],
-  ["Prompt guide: style tags and lyric formatting", "https://chunks.md/yue2-prompt-guide"],
-  ["Prompt guide: planning modes and takes", "https://songcreator.pro/blog/yue2-prompting-guide"],
 ];
 
 export default function LearnPage() {

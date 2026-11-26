@@ -1,34 +1,28 @@
-﻿<#
+<#
 .SYNOPSIS
-    Creates (or removes) desktop shortcuts for starting, stopping and opening
-    SongForge.
+    Puts a "SongForge" shortcut on your desktop, or removes it again.
 
 .DESCRIPTION
-    Three shortcuts, all optional:
+    The shortcut runs start.bat - exactly what double-clicking that file does.
+    A terminal window opens, shows the address to open in your browser, and
+    stays open while SongForge runs. Closing that window stops SongForge, so
+    there is no separate "stop" shortcut.
 
-      Start SongForge   runs Start-SongForge.ps1 in a visible window, so you can
-                        read the address it prints and any error it hits
-      Stop SongForge    runs Stop-SongForge.ps1
-      Open SongForge    an internet shortcut to http://localhost:<port>
-
-    Nothing here needs administrator rights; the shortcuts are written to your
+    Nothing here needs administrator rights; the shortcut is written to your
     own Desktop folder, wherever that is (OneDrive-redirected desktops work).
 
 .PARAMETER Port
-    Port used for the "Open SongForge" shortcut and passed to the start script.
-    Default 3333.
+    Port for the web app, passed to the start script. Default 3333.
 
-.PARAMETER BackendPort
-    Backend port passed to the start script. Default 3334.
+.PARAMETER Lan
+    Make the shortcut start SongForge shared on your network (start.bat -Lan).
 
-.PARAMETER Prefix
-    Name prefix for the shortcut files. Default 'SongForge'.
-
-.PARAMETER NoOpenShortcut
-    Skip the browser shortcut.
+.PARAMETER Name
+    Name of the shortcut. Default 'SongForge'.
 
 .PARAMETER Remove
-    Delete the shortcuts instead of creating them.
+    Delete the shortcut instead of creating it. Also removes the Start, Stop
+    and Open shortcuts that earlier versions of this script created.
 
 .EXAMPLE
     .\Create-DesktopShortcut.ps1
@@ -38,41 +32,43 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [ValidateRange(1, 65535)][int]$Port = 3333,
-    [ValidateRange(1, 65535)][int]$BackendPort = 3334,
-    [ValidateNotNullOrEmpty()][string]$Prefix = 'SongForge',
-    [switch]$NoOpenShortcut,
+    [switch]$Lan,
+    [ValidateNotNullOrEmpty()][string]$Name = 'SongForge',
     [switch]$Remove
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$Root      = Split-Path -Parent $PSScriptRoot
-$StartPath = Join-Path $PSScriptRoot 'Start-SongForge.ps1'
-$StopPath  = Join-Path $PSScriptRoot 'Stop-SongForge.ps1'
-$Desktop   = [Environment]::GetFolderPath('Desktop')
+$Root     = Split-Path -Parent $PSScriptRoot
+$StartBat = Join-Path $Root 'start.bat'
+$Desktop  = [Environment]::GetFolderPath('Desktop')
 
 function Write-Ok   { param([string]$Message) Write-Host "  $Message" -ForegroundColor Green }
 function Write-Warn { param([string]$Message) Write-Host "  $Message" -ForegroundColor Yellow }
 
 if (-not $Desktop -or -not (Test-Path -LiteralPath $Desktop)) {
-    Write-Error "Could not locate your Desktop folder (got '$Desktop')."
+    Write-Host "  Could not locate your Desktop folder (got '$Desktop')." -ForegroundColor Red
     exit 2
 }
 
-$startLink = Join-Path $Desktop "Start $Prefix.lnk"
-$stopLink  = Join-Path $Desktop "Stop $Prefix.lnk"
-$openLink  = Join-Path $Desktop "Open $Prefix.url"
+$link = Join-Path $Desktop "$Name.lnk"
+# What earlier versions of this script created; -Remove clears these too.
+$legacy = @(
+    (Join-Path $Desktop "Start $Name.lnk"),
+    (Join-Path $Desktop "Stop $Name.lnk"),
+    (Join-Path $Desktop "Open $Name.url")
+)
 
 Write-Host ''
-Write-Host "SongForge desktop shortcuts" -ForegroundColor White
+Write-Host 'SongForge desktop shortcut' -ForegroundColor White
 Write-Host "  Desktop: $Desktop" -ForegroundColor DarkGray
 Write-Host ''
 
 # --- Remove -----------------------------------------------------------------
 if ($Remove) {
     $removed = 0
-    foreach ($path in @($startLink, $stopLink, $openLink)) {
+    foreach ($path in @($link) + $legacy) {
         if (Test-Path -LiteralPath $path) {
             if ($PSCmdlet.ShouldProcess($path, 'Delete shortcut')) {
                 Remove-Item -LiteralPath $path -Force
@@ -81,67 +77,40 @@ if ($Remove) {
             }
         }
     }
-    if ($removed -eq 0) { Write-Warn 'No SongForge shortcuts were on the desktop.' }
+    if ($removed -eq 0) { Write-Warn 'No SongForge shortcut was on the desktop.' }
     Write-Host ''
     exit 0
 }
 
 # --- Create -----------------------------------------------------------------
-foreach ($required in @($StartPath, $StopPath)) {
-    if (-not (Test-Path -LiteralPath $required)) {
-        Write-Error "Missing script: $required"
-        exit 2
-    }
+if (-not (Test-Path -LiteralPath $StartBat)) {
+    Write-Host "  Missing: $StartBat" -ForegroundColor Red
+    exit 2
 }
 
-# powershell.exe carries its own icon, which is the honest one to show: these
-# shortcuts run a script, they are not the application itself.
-$iconSource = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe,0"
-$shell = New-Object -ComObject WScript.Shell
+$arguments = @()
+if ($Port -ne 3333) { $arguments += "-Port $Port" }
+if ($Lan) { $arguments += '-Lan' }
 
-function New-ScriptShortcut {
-    param(
-        [string]$LinkPath,
-        [string]$ScriptPath,
-        [string]$Arguments,
-        [string]$Description
-    )
-    if (-not $PSCmdlet.ShouldProcess($LinkPath, 'Create shortcut')) { return }
-    $link = $shell.CreateShortcut($LinkPath)
-    $link.TargetPath = 'powershell.exe'
-    # -NoExit keeps the window open so the printed address and any error
-    # stay readable instead of vanishing with the console.
-    $link.Arguments = "-NoProfile -ExecutionPolicy Bypass -NoExit -File `"$ScriptPath`" $Arguments"
-    $link.WorkingDirectory = $Root
-    $link.IconLocation = $iconSource
-    $link.Description = $Description
-    $link.Save()
-    Write-Ok "Created $(Split-Path -Leaf $LinkPath)"
-}
-
-New-ScriptShortcut -LinkPath $startLink -ScriptPath $StartPath `
-    -Arguments "-Port $Port -BackendPort $BackendPort" `
-    -Description 'Start SongForge and show the address to open.'
-
-New-ScriptShortcut -LinkPath $stopLink -ScriptPath $StopPath `
-    -Arguments '' `
-    -Description 'Stop SongForge. A generation in progress is cancelled cleanly.'
-
-if (-not $NoOpenShortcut) {
-    if ($PSCmdlet.ShouldProcess($openLink, 'Create internet shortcut')) {
-        # A .url file opens in the default browser without a shell wrapper.
-        @(
-            '[InternetShortcut]'
-            "URL=http://localhost:$Port"
-            "IconIndex=0"
-        ) | Set-Content -LiteralPath $openLink -Encoding ascii
-        Write-Ok "Created $(Split-Path -Leaf $openLink)"
-    }
+if ($PSCmdlet.ShouldProcess($link, 'Create shortcut')) {
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($link)
+    # cmd.exe /c rather than the .bat itself: a shortcut pointing straight at a
+    # batch file cannot be pinned to Start or the taskbar.
+    $shortcut.TargetPath = "$env:SystemRoot\System32\cmd.exe"
+    $shortcut.Arguments = "/c `"`"$StartBat`" $($arguments -join ' ')`""
+    $shortcut.WorkingDirectory = $Root
+    # A terminal icon is the honest one to show: this opens a terminal window,
+    # and that window is the app.
+    $shortcut.IconLocation = "$env:SystemRoot\System32\cmd.exe,0"
+    $shortcut.Description = 'Start SongForge. Keep the window open while you use it; close it to stop.'
+    $shortcut.Save()
+    Write-Ok "Created $(Split-Path -Leaf $link)"
 }
 
 Write-Host ''
-Write-Host '  Open SongForge only works once it is running.' -ForegroundColor DarkGray
-Write-Host '  To use it from another device, start it with -Lan and use the address it prints.' -ForegroundColor DarkGray
-Write-Host "  Undo: .\Create-DesktopShortcut.ps1 -Remove" -ForegroundColor DarkGray
+Write-Host '  Double-click it to start SongForge. A terminal window opens and shows' -ForegroundColor DarkGray
+Write-Host '  the address; closing that window stops SongForge.' -ForegroundColor DarkGray
+Write-Host '  Undo: .\scripts\Create-DesktopShortcut.ps1 -Remove' -ForegroundColor DarkGray
 Write-Host ''
 exit 0

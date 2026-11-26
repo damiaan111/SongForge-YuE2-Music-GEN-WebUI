@@ -264,16 +264,18 @@ export interface AdvancedGeneration {
 }
 
 /**
- * Two takes by default.
+ * One take by default.
  *
  * YuE2's published benchmark baseline is the better of two candidates, and
- * best-of-8 is how its headline score was measured - a single take is the model
- * at its worst, not its average. The cost is roughly double the render time -
- * about half an hour for two takes of a five-minute song on the reference
- * 12 GB card - which is the trade the default makes for you.
+ * best-of-8 is how its headline score was measured, so more takes do give a
+ * better song. But each take is a whole render, and the default is what a
+ * newcomer waits through before hearing anything at all: on a mid-range card
+ * two takes turned an eleven-minute first song into twenty-two. One take is
+ * the quickest honest answer to "does this work?"; the control sits right
+ * beside the Generate button for the song that deserves more.
  */
 export const DEFAULT_ADVANCED: AdvancedGeneration = {
-  candidates: 2,
+  candidates: 1,
   abc: {},
   semantic: {},
   ode_steps: null,
@@ -410,7 +412,7 @@ export function TakesField({
       <p className="mt-2 text-xs leading-relaxed text-ink-faint">
         {value.candidates > 1
           ? `${value.candidates} separate renders, one after another, each with its own seed — about ${minutes} minutes${on} ${forWhat}. Compare them in Versions and keep the best.`
-          : `One take is the model at its worst, not its average: YuE2's own baseline is the better of two. About ${minutes} minutes${on} ${forWhat}.`}
+          : `One render — about ${minutes} minutes${on} ${forWhat}. YuE2 varies a lot from take to take, so for a song you care about pick 2 or more and keep the best.`}
       </p>
     </div>
   );
