@@ -142,18 +142,6 @@ def test_no_shell_execution_anywhere() -> None:
     assert not offenders, f"shell execution found: {offenders}"
 
 
-def test_fp8_on_unsupported_gpu_is_flagged(client) -> None:
-    body = client.put("/api/settings", json={
-        "runner_kind": "yue2_cli",
-        "model_path": "D:/models/YuE2-3B",
-        "quantization": "fp8",
-    }).json()
-    assert any("fp8" in issue.lower() for issue in body["configuration_issues"])
-
-
-# ------------------------------------------------------------- diagnostics
-
-
 def test_diagnostics_for_mock_runner_succeed(client) -> None:
     body = client.post("/api/diagnostics/runner").json()
     assert body["ok"] is True

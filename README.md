@@ -143,7 +143,7 @@ memory.
 | NVIDIA, 12 GB or more — Windows | **Tested end to end** on an RTX 3060 12 GB: clean install, render, every screen. 24 GB is what YuE2 upstream asks for; 12 GB works with AR offload and memory-efficient attention, which setup switches on for you. |
 | NVIDIA, 12 GB or more — Linux | Same code path, covered by the automated tests on every change, but no render has been verified on a physical Linux machine. Reports welcome. |
 | NVIDIA, 8–10 GB | Installs and runs; expect out-of-memory errors on longer songs. Keep lyrics short. |
-| NVIDIA, compute 8.9+ (Ada, Hopper, Blackwell) | Also gets fp8 quantization, which older cards cannot run at all. |
+| NVIDIA RTX 40 and 50 series | Same settings as the row for their memory size. These cards can also run YuE2's experimental `fp8` mode; it is off by default and can be chosen in Settings. |
 | Apple Silicon (M-series) | **Experimental.** Setup installs the Metal build and the start script is the same one Linux uses, but nothing has been rendered on a Mac by the maintainers. 16 GB of memory is a practical minimum. |
 | AMD on Linux (ROCm) | PyTorch exists; untested here. |
 | AMD or Intel graphics on Windows | Not supported by PyTorch. Setup says so and offers the CPU, which takes hours per song. |
@@ -371,7 +371,7 @@ Everything below lives in **Settings**, and each field explains itself there.
 | GPU index | `0` | First CUDA device. |
 | VRAM budget | `12` GiB | Your card's size. YuE2 caps itself at budget − 2 GiB, so on a 12 GB card this allows 10 GiB. A lower number only makes out-of-memory errors likelier. |
 | Attention backend | `torch-eager` | Works everywhere and is what setup chooses. Plain `torch` needs FlashAttention, which has no Windows build. |
-| Quantization | `none` | `fp8` needs compute capability 8.9+; an RTX 3060 is 8.6. |
+| Quantization | `none` | The default on every card. `fp8` is experimental in YuE2 and needs an RTX 40 series card or newer (compute capability 8.9+). |
 | Offline mode | on, after the first download | Prevents any Hugging Face lookup. |
 
 The **command template** builds the `yue2` command line from documented
@@ -539,9 +539,22 @@ tokens** keeps it within reach. Windows "shared GPU memory" is not used: the
 limit is enforced before it could be, and spilling to system RAM over PCIe would
 be many times slower anyway.
 
-**`fp8 requires compute capability 8.9`**
+**"The music engine is not fully set up" with a message about `fp8`, right after installing**
 
-Set Quantization to `none`. An RTX 3060 is compute 8.6.
+This was a bug in version 1.0.0: setup switched `fp8` on for every RTX 40 and 50
+series card, and the app then refused to render with it. Update and start again
+- that is all:
+
+```
+git pull
+```
+
+then `setup.bat` (`./setup.sh`) and `start.bat` (`./start.sh`). Version 1.0.1
+puts the setting back to `none` by itself.
+
+If you chose `fp8` yourself on an older card, set Quantization back to `none` in
+Settings, under Model and GPU. An RTX 3060, for example, is compute 8.6 and
+cannot run it.
 
 **Generate is rejected because lyrics are required**
 

@@ -651,7 +651,7 @@ function HardwareSection({ value, set, errors, settings }: SectionProps) {
           <Field
             label="Quantization"
             htmlFor={fieldId("settings", "quantization")}
-            hint="fp8 needs compute capability 8.9 or newer — Ada, Hopper and later. On an older card leave this at none; it will not run faster, it will not run at all."
+            hint="Leave this at none unless you want to experiment. fp8 is an experimental YuE2 mode that only runs on RTX 40 series cards and newer (compute capability 8.9+); older cards cannot run it at all."
           >
             <Select
               id={fieldId("settings", "quantization")}

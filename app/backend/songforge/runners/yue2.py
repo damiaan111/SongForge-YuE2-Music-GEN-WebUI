@@ -107,6 +107,10 @@ _STAGE_PERCENT_RE = re.compile(r"\((\d{1,3})%\)")
 
 _TOKEN_RE = re.compile(r"\{(\w+)\}")
 
+# The oldest CUDA compute capability whose hardware has FP8 kernels (Ada,
+# Hopper). yue2 refuses fp8 below it (yue2/quantization.py).
+FP8_MIN_COMPUTE = (8, 9)
+
 # Settings are reachable by anyone who can reach the API, so the runner is
 # constrained to the yue2 CLI. Without this the executable field plus a free-form
 # template would amount to a "run any program with any arguments" endpoint.
@@ -352,6 +356,10 @@ class Yue2Config:
     # Launch through yue2_launch.py so long songs use the memory-efficient
     # attention kernel. See that module for the measurements.
     memory_efficient_attention: bool = True
+    # The CUDA compute capability setup detected, e.g. (8, 6) for an RTX 30
+    # card and (8, 9) for an RTX 40 one. None when setup has not run or the
+    # card is not an NVIDIA one: then nothing is known, and nothing is assumed.
+    compute: tuple[int, int] | None = None
 
     @property
     def device(self) -> str:
@@ -617,10 +625,16 @@ class Yue2CliRunner(BaseRunner):
             if required not in template:
                 issues.append(f"Template is missing the {required} placeholder.")
 
-        if cfg.quantization == "fp8":
+        # Only when the card is known to be too old. This used to be reported
+        # for every card, including the ones fp8 was made for - and since a
+        # reported problem blocks rendering, nobody with an RTX 40 or 50 card
+        # could make a song at all.
+        if cfg.quantization == "fp8" and cfg.compute is not None and cfg.compute < FP8_MIN_COMPUTE:
             issues.append(
-                "fp8 quantization requires compute capability 8.9 or newer "
-                "(Ada, Hopper and later). Older cards cannot use it."
+                f"fp8 quantization needs compute capability "
+                f"{FP8_MIN_COMPUTE[0]}.{FP8_MIN_COMPUTE[1]} or newer (RTX 40 series and later); "
+                f"this card is {cfg.compute[0]}.{cfg.compute[1]}. "
+                "Set Quantization to none in Settings, under Model and GPU."
             )
         return issues
 

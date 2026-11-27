@@ -170,6 +170,10 @@ def add_missing_columns(engine: Engine) -> list[str]:
     return added
 
 
+# Raised whenever _ensure_settings_row gains a one-time repair.
+SETTINGS_REVISION = 1
+
+
 def _ensure_settings_row(session: Session) -> AppSettings:
     """The single settings row, created from the hardware profile if it is new.
 
@@ -187,9 +191,21 @@ def _ensure_settings_row(session: Session) -> AppSettings:
             settings.default_language = named
             session.add(settings)
             session.flush()
+        # Version 1.0.0 switched fp8 on for every RTX 40 and 50 card during
+        # setup, and then refused to render with it. Nobody could have chosen
+        # it and used it, so a stored fp8 from then is setup's doing, and it
+        # goes back to the setting that is known to work. Done once: an fp8
+        # chosen in Settings after this is the user's and is left alone.
+        if settings.settings_revision < SETTINGS_REVISION:
+            if settings.settings_revision < 1 and settings.quantization == "fp8":
+                settings.quantization = "none"
+                log.info("quantization reset from fp8 to none (set by setup in 1.0.0)")
+            settings.settings_revision = SETTINGS_REVISION
+            session.add(settings)
+            session.flush()
         return settings
 
-    settings = AppSettings(id=1)
+    settings = AppSettings(id=1, settings_revision=SETTINGS_REVISION)
     profile = hardware_profile.load(get_config().runtime_dir)
     if profile is not None:
         applied = []

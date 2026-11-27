@@ -440,8 +440,11 @@ def settings_profile(gpu: Gpu) -> dict:
         # yue2 clamps to the card either way.
         profile["memory_budget_gib"] = round(max(4.0, card), 1)
         profile["offload_ar"] = card < 16.0
-        if gpu.compute and (gpu.compute[0], gpu.compute[1]) >= (8, 9):
-            profile["quantization"] = "fp8"
+        # Quantization stays "none" on every card. fp8 runs on compute 8.9 and
+        # newer, but yue2 itself calls it opt-in and experimental, and nothing
+        # here has rendered a song with it. A default has to be the setting
+        # that is known to work; fp8 remains one choice away in Settings for
+        # anyone whose card supports it.
 
     profile["lyrics_model"] = recommended_lyrics_model(gpu)
     return profile

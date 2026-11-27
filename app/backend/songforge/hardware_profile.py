@@ -27,7 +27,7 @@ PROFILE_FILENAME = "hardware-profile.json"
 # update, so a stale profile from an older version cannot set fields that have
 # since changed meaning, and so the file can never flip, say, offline_mode.
 SEEDABLE_SETTINGS = frozenset({
-    "memory_budget_gib", "offload_ar", "quantization", "backend_mode",
+    "memory_budget_gib", "offload_ar", "backend_mode",
     "memory_efficient_attention", "gpu_index", "lyrics_model",
 })
 SEEDABLE_PATHS = frozenset({"python_executable", "model_path", "vae_path"})

@@ -25,6 +25,15 @@ __all__ = [
 ]
 
 
+def _detected_compute() -> tuple[int, int] | None:
+    """The compute capability setup recorded for this machine, if it did."""
+    from ..config import get_config
+    from ..hardware_profile import load
+
+    profile = load(get_config().runtime_dir)
+    return profile.compute if profile is not None else None
+
+
 def build_runner(settings: AppSettings) -> BaseRunner:
     """Construct the runner described by ``settings``."""
     if settings.runner_kind is RunnerKind.YUE2_CLI:
@@ -42,6 +51,7 @@ def build_runner(settings: AppSettings) -> BaseRunner:
                 offline_mode=settings.offline_mode,
                 command_template=settings.command_template or DEFAULT_COMMAND_TEMPLATE,
                 memory_efficient_attention=settings.memory_efficient_attention,
+                compute=_detected_compute(),
             )
         )
     return MockRunner()

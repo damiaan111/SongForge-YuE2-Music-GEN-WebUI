@@ -88,6 +88,7 @@ def _build_response(session: Session) -> SettingsOut:
     data = settings.model_dump()
     data.pop("id", None)
     data.pop("updated_at", None)
+    data.pop("settings_revision", None)
     return SettingsOut(
         **data,
         capabilities=capabilities_out(runner.capabilities),

@@ -100,14 +100,16 @@ def test_the_budget_is_the_whole_card_because_yue2_keeps_its_own_reserve() -> No
     profile = settings_profile(RTX_3060)
     assert profile["memory_budget_gib"] == 12.0
     assert profile["offload_ar"] is True
-    assert profile["quantization"] == "none"  # compute 8.6 cannot do fp8
+    assert profile["quantization"] == "none"
 
 
-def test_a_big_modern_card_gets_its_whole_budget_and_fp8() -> None:
+def test_a_big_modern_card_gets_its_whole_budget_and_no_experiments() -> None:
     profile = settings_profile(RTX_4090)
     assert profile["memory_budget_gib"] == 24.0
     assert profile["offload_ar"] is False
-    assert profile["quantization"] == "fp8"
+    # fp8 would run on this card, but yue2 calls it experimental and 1.0.0
+    # shipped it as the default without ever having rendered with it.
+    assert profile["quantization"] == "none"
 
 
 def test_apple_takes_a_share_of_shared_memory_not_all_of_it() -> None:
@@ -405,7 +407,7 @@ def test_a_profile_round_trips_from_setup_into_the_backend(tmp_path) -> None:
     assert profile is not None
     assert profile.gpu_name == "RTX 4090"
     assert profile.compute == (8, 9)
-    assert profile.settings["quantization"] == "fp8"
+    assert "quantization" not in profile.settings, "never seeded from the file"
     assert "RTX 4090" in profile.describe()
 
     seeded = hardware_profile.seed_values(profile)
@@ -479,7 +481,8 @@ def test_a_fresh_database_starts_configured_for_the_detected_card(runtime_dir) -
         settings = session.get(AppSettings, 1)
         assert settings is not None
         assert settings.memory_budget_gib == 22.0
-        assert settings.quantization == "fp8"
+        # A profile written by 1.0.0 still says fp8. It is not taken from there.
+        assert settings.quantization == "none"
         assert settings.offload_ar is False
         assert settings.model_path == "/w/YuE2-3B"
         assert settings.runner_kind == "yue2_cli"

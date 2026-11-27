@@ -165,6 +165,8 @@ class AppSettings(SQLModel, table=True):
     default_style_prompt: str = Field(default="", sa_column=Column(Text))
     default_language: str = "English"
 
+    # Which one-time repairs this row has had. See db._ensure_settings_row.
+    settings_revision: int = 0
     # No longer used: the in-app setup wizard was removed, setup does that job.
     # The column stays so that existing databases load without a migration.
     wizard_completed: bool = False
